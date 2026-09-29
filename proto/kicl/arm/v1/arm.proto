@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package kicl.arm.v1;
+
+// The wire between the hub and its arms. The hub plans in pad poses and case
+// ids; each arm turns those into joint motion on its own. One socket carries
+// every arm: each message names the arm it is for or from.
+//
+// This mirrors `cell/protocol` in Ki.CL. Change the two together.
+
+// Distances in metres, in the arm's own frame: x across, y up, z out.
+message Point {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+// A box square to the cell, by its lowest and highest corners.
+message Box {
+  string id = 1;
+  Point min = 2;
+  Point max = 3;
+}
+
+// Where the pad is sent: a position and the heading it faces, in radians.
+message Pose {
+  Point at = 1;
+  double facing = 2;
+}
+
+// Joint angles in radians. `grip` is the vacuum, from 0 (off) to 1 (holding).
+// The hub never plans in these; they go out in telemetry so a viewer can draw
+// the arm.
+message Joints {
+  double yaw = 1;
+  double shoulder = 2;
+  double elbow = 3;
+  double wrist = 4;
+  double roll = 5;
+  double grip = 6;
+}
+
+// How the pad moves to a pose. `arrive` and `leave` are the slow straight
+// moves into and out of contact with a case; `swing` travels at speed.
+enum Ease {
+  EASE_UNSPECIFIED = 0;
+  EASE_ARRIVE = 1;
+  EASE_LEAVE = 2;
+  EASE_SWING = 3;
+}
+
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_IDLE = 1;
+  STATE_RUNNING = 2;
+  STATE_HELD = 3;
+  STATE_STOPPED = 4;
+}
+
+// Why an arm is held: the operator asked, or its own sensors saw something.
+enum Cause {
+  CAUSE_UNSPECIFIED = 0;
+  CAUSE_COMMAND = 1;
+  CAUSE_SENSOR = 2;
+}
+
+// One thing the arm does, in order. The arm knows nothing about cases beyond
+// their ids. A `gate` holds the arm there until the hub opens it: how it waits
+// for a belt to clear without knowing there is a belt.
+message Instruction {
+  message Move {
+    Pose to = 1;
+    Ease ease = 2;
+  }
+
+  message Pick {
+    string case_id = 1;
+  }
+
+  message Place {
+    string case_id = 1;
+  }
+
+  message Wait {
+    double seconds = 1;
+  }
+
+  message Gate {
+    string id = 1;
+  }
+
+  oneof do {
+    Move move = 1;
+    Pick pick = 2;
+    Place place = 3;
+    Wait wait = 4;
+    Gate gate = 5;
+  }
+}
+
+// A plan for one arm. The hub sends a whole plan each time; a newer revision
+// replaces whatever the arm still had to do. `holding` is what the hub thinks
+// the arm has on the pad, and the arm rejects a plan that gets it wrong.
+// `known` are the obstacles the hub planned around, so seeing one of them
+// doesn't stop the arm.
+message Plan {
+  string arm = 1;
+  uint32 revision = 2;
+  optional string holding = 3;
+  repeated string known = 4;
+  repeated Instruction instructions = 5;
+}
+
+// What the hub sends an arm. `stop` is the emergency stop: motors off at once,
+// and nothing runs again until `reset`. `hold` is the gentle one: the arm
+// brakes and waits for `resume` or a new plan. `open` lets the arm past a gate
+// in its plan; sent early, it's remembered until the arm gets there.
+message Command {
+  message Hold {}
+
+  message Resume {}
+
+  message Stop {}
+
+  message Reset {}
+
+  message Open {
+    string gate = 1;
+  }
+
+  string arm = 1;
+
+  oneof type {
+    Plan load = 2;
+    Hold hold = 3;
+    Resume resume = 4;
+    Stop stop = 5;
+    Reset reset = 6;
+    Open open = 7;
+  }
+}
+
+// What is physically around an arm, in its own frame, for its sensors to
+// meet. A simulated arm needs telling; a real one sees the world itself and
+// ignores this.
+message Scene {
+  string arm = 1;
+  repeated Box boxes = 2;
+}
+
+// Everything that goes from the hub to the arms.
+message ToArm {
+  oneof body {
+    Command command = 1;
+    Scene scene = 2;
+  }
+}
+
+// Where the arm is, sent at a steady rate whether or not anything happened.
+message Telemetry {
+  // Seconds since the controller booted.
+  double at = 1;
+  State state = 2;
+  optional uint32 revision = 3;
+  // The instruction under way, or the count when the plan is done.
+  uint32 step = 4;
+  Joints joints = 5;
+  Pose pad = 6;
+  optional string holding = 7;
+}
+
+// What an arm tells the hub. `progress` is one instruction finished; `held`
+// says why the arm stopped moving, with the obstacles its sensors saw that the
+// plan didn't know of.
+message Report {
+  message Loaded {
+    uint32 revision = 1;
+  }
+
+  message Rejected {
+    uint32 revision = 1;
+    string reason = 2;
+  }
+
+  message Progress {
+    uint32 revision = 1;
+    uint32 step = 2;
+  }
+
+  message Done {
+    uint32 revision = 1;
+  }
+
+  message Held {
+    Cause cause = 1;
+    repeated string seen = 2;
+  }
+
+  message Resumed {}
+
+  message Stopped {}
+
+  message Reset {}
+
+  string arm = 1;
+
+  oneof type {
+    Telemetry telemetry = 2;
+    Loaded loaded = 3;
+    Rejected rejected = 4;
+    Progress progress = 5;
+    Done done = 6;
+    Held held = 7;
+    Resumed resumed = 8;
+    Stopped stopped = 9;
+    Reset reset = 10;
+  }
+}
