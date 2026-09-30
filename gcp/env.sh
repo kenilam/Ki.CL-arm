@@ -11,9 +11,10 @@ REGION="${REGION:-${ZONE%-*}}"
 NAME="${NAME:-arm}"
 # A G2 machine comes with its L4 built in; no accelerator flag needed.
 MACHINE="${MACHINE:-g2-standard-8}"
-# Isaac Sim's container alone is tens of gigabytes.
-DISK_GB="${DISK_GB:-200}"
-IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-2204-lts}"
+# Isaac Sim's container is 32 GB and Isaac ROS's another 15 or so; 100 GB holds both with their caches.
+DISK_GB="${DISK_GB:-100}"
+# 24.04: Isaac ROS 5.0's tooling supports nothing older on x86_64.
+IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-2404-lts-amd64}"
 IMAGE_PROJECT="${IMAGE_PROJECT:-ubuntu-os-cloud}"
 # SPOT=1 for a preemptible machine at a fraction of the price; fine for a dev box, not for a demo.
 SPOT="${SPOT:-0}"
