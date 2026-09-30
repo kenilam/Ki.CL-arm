@@ -226,7 +226,7 @@ const create = ({
         event: {
           type: 'note',
           level: 'error',
-          text: `No room for pallet ${target.id}`,
+          text: `no room for pallet ${target.id}`,
           detail: `slot ${target.at.slot} of ${index(target.at.parent)} is taken, or the one facing it`,
         },
       });
@@ -282,6 +282,18 @@ const create = ({
   const blocking = (found: Geometry) =>
     blocks.filter((box) => covers(found, box));
 
+  /** Puts `arm` on `to` instead of the link it has now, at its next moment between jobs. The new arm hears of the cell's obstacles first. */
+  const relink = (arm: string, to: Link) => {
+    const found = [...stations.values()].find(({ id }) => id === arm);
+
+    if (!found) {
+      return;
+    }
+
+    feed(arm, shifted(found.hex));
+    found.relink(to);
+  };
+
   const load = (hex: Hex) => {
     const found = stations.get(index(hex));
 
@@ -323,7 +335,7 @@ const create = ({
           event: {
             type: 'note',
             level: 'warning',
-            text: `Line ${found.id} stopped`,
+            text: `line ${found.id} stopped`,
             detail: `${now.join(', ')} on the belt`,
           },
         });
@@ -334,7 +346,7 @@ const create = ({
           event: {
             type: 'note',
             level: 'info',
-            text: `Line ${found.id} running again`,
+            text: `line ${found.id} running again`,
             detail: 'the belt is clear',
           },
         });
@@ -522,6 +534,7 @@ const create = ({
     load,
     place,
     plan,
+    relink,
     remove,
     ride,
     tick,

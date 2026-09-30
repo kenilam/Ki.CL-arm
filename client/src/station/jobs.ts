@@ -131,8 +131,8 @@ const refuse = (
   note(
     station,
     reason === 'room'
-      ? `No room on the buffer for ${label(id)}`
-      : `No clear path for ${label(id)}`,
+      ? `no room on the buffer for ${label(id)}`
+      : `no clear path for ${label(id)}`,
     'error',
     [
       across.length ? `${across.join(', ')} in the way` : '',
@@ -162,7 +162,7 @@ const retry = (station: Station) => {
     if ('moves' in request(station, { belt, target, of, to })) {
       unpark(station, target);
       station.queue.push({ belt, target, of, to });
-      note(station, `Trying ${label(target)} again`, 'info');
+      note(station, `trying ${label(target)} again`, 'info');
     }
   });
 };
@@ -273,7 +273,7 @@ const stop = (station: Station) => {
 
   station.halted = true;
   say(station, { type: 'alarm' });
-  note(station, 'Stopped', 'error', 'no slot left for another pallet');
+  note(station, 'stopped', 'error', 'no slot left for another pallet');
 };
 
 /** Lets the arm go on, unless the hub holds the whole floor. */
@@ -307,14 +307,14 @@ const replan = (station: Station) => {
     if (station.halted) {
       station.halted = false;
       say(station, { type: 'calm' });
-      note(station, 'Found a way', 'confirm', 'carrying on');
+      note(station, 'found a way', 'confirm', 'carrying on');
     }
   } else if (station.holding) {
     // Holding a case with nowhere to take it: stay held, and wait for the cell to change.
     if (!station.halted) {
       station.halted = true;
       say(station, { type: 'alarm' });
-      note(station, 'Stopped', 'error', 'no clear way on with the case');
+      note(station, 'stopped', 'error', 'no clear way on with the case');
     }
   } else {
     cancel(station);
@@ -429,7 +429,7 @@ const retreat = (station: Station, job: Job, gate: number) => {
   job.revision = send(station, job.steps);
   note(
     station,
-    'Back up',
+    'back up',
     'warning',
     'a case is coming along the belt under the drop'
   );

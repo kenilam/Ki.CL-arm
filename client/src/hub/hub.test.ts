@@ -99,7 +99,7 @@ describe('the hub', () => {
     );
     assert.ok(
       lines.some(
-        (line) => line === 'arm-a: Set case c1 down on its own pallet'
+        (line) => line === 'arm-a: set case c1 down on its own pallet'
       ),
       lines.join('\n')
     );
@@ -166,15 +166,15 @@ describe('the hub', () => {
     run(40, () => {
       lines.push(...log());
 
-      return lines.some((line) => line.includes('No clear path'));
+      return lines.some((line) => line.includes('no clear path'));
     });
 
     assert.ok(
-      lines.some((line) => line.startsWith('arm-a: Arm found wall in its way')),
+      lines.some((line) => line.startsWith('arm-a: arm found wall in its way')),
       lines.join('\n')
     );
     assert.ok(
-      lines.some((line) => line.includes('No clear path for case c1')),
+      lines.some((line) => line.includes('no clear path for case c1')),
       lines.join('\n')
     );
   });
@@ -274,7 +274,7 @@ describe('the hub', () => {
     assert.ok(
       notes.some(
         ({ event }) =>
-          event.type === 'note' && event.text === 'Line line stopped'
+          event.type === 'note' && event.text === 'line line stopped'
       ),
       'the log says the line stopped'
     );
@@ -322,7 +322,7 @@ describe('the hub', () => {
     );
     assert.ok(
       lines.some(
-        (line) => line === 'arm-c: Set case c1 down on its own pallet'
+        (line) => line === 'arm-c: set case c1 down on its own pallet'
       ),
       lines.join('\n')
     );
@@ -449,7 +449,7 @@ describe('the hub', () => {
         .drain()
         .some(
           ({ event }) =>
-            event.type === 'note' && event.text === 'No room for pallet p2'
+            event.type === 'note' && event.text === 'no room for pallet p2'
         )
     );
   });
@@ -507,7 +507,7 @@ describe('the hub', () => {
     const by = (arm: string) =>
       lines.filter(
         (line) =>
-          line.startsWith(`${arm}: Set case`) && line.includes('own pallet')
+          line.startsWith(`${arm}: set case`) && line.includes('own pallet')
       ).length;
 
     assert.ok(

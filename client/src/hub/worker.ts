@@ -24,13 +24,15 @@ const WAKE = 1000 / 30;
  * What the console sends the hub. `floor` is the whole thing at once: the
  * hub builds from the configuration and is ready to run. The rest change a
  * running floor one piece at a time. A `link` puts the arms on a bridge at
- * that address rather than in workers here. `scene` is the simulation's
+ * that address rather than in workers here, and `link` on its own moves the
+ * arms of a running floor there, or back, without starting it over. `scene` is the simulation's
  * side door: the boxes an arm's sensors would meet, which a real arm gets
  * from the world itself.
  */
 type Inbound =
   | { type: 'floor'; floor: Floor; link?: string }
   | { type: 'build'; cells: Cell[]; lines: Line[]; link?: string }
+  | { type: 'link'; link?: string }
   | { type: 'load'; hex: Hex }
   | { type: 'block'; boxes: Box[]; moved: boolean }
   | { type: 'place'; target: Omit<Target, 'claimed' | 'version'> }
@@ -167,6 +169,17 @@ scope.onmessage = ({ data }) => {
       return;
     case 'build':
       build(data.cells, data.lines, data.link);
+
+      return;
+    case 'link':
+      // The links let go of close themselves as each station swaps; a wire's socket goes with its last link.
+      wire = data.link ? dial(data.link) : null;
+      hub?.stations.forEach(({ id }) => {
+        const found = wire ? wire.link(id) : connect(id);
+
+        feeds.set(id, found.feed);
+        hub?.relink(id, found);
+      });
 
       return;
     case 'load':
