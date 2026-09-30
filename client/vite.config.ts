@@ -51,7 +51,8 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'dist',
-    emptyOutDir: true,
+    // The watch build emits no types, so it must not sweep away the ones the build before it wrote.
+    emptyOutDir: !process.argv.includes('--watch'),
     modulePreload: false,
   },
   worker: {
