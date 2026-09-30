@@ -269,3 +269,39 @@ fn a_move_is_not_done_until_the_physics_have_arrived() {
 
     assert!(kinds(&controller.drain()).contains(&"done"));
 }
+
+#[test]
+fn a_move_is_done_once_the_physics_stop_just_short_of_the_goal() {
+    let mut controller = Controller::new(ARM);
+    let target = Point { x: 0.8, y: 0.9, z: 1.4 };
+    let goal = solve(&target, 0.0, 0.0);
+    // Stopped on a case top: a little off on the wrist, and not moving.
+    let short = Joints { wrist: goal.wrist + 0.05, ..goal };
+
+    controller.command(planned(vec![swing(target)], 1, None));
+
+    for _ in 0..8000 {
+        controller.observe(short);
+        controller.tick(TICK);
+    }
+
+    assert!(kinds(&controller.drain()).contains(&"done"));
+}
+
+#[test]
+fn a_move_is_not_done_while_the_physics_stop_far_from_the_goal() {
+    let mut controller = Controller::new(ARM);
+    let target = Point { x: 0.8, y: 0.9, z: 1.4 };
+    let goal = solve(&target, 0.0, 0.0);
+    let far_off = Joints { wrist: goal.wrist + 0.3, ..goal };
+
+    controller.command(planned(vec![swing(target)], 1, None));
+
+    for _ in 0..8000 {
+        controller.observe(far_off);
+        controller.tick(TICK);
+    }
+
+    assert_eq!(controller.telemetry().step, 0);
+    assert_eq!(controller.telemetry().state, State::Running);
+}

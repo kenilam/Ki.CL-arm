@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::constants::{FOLLOWED, PASSING, SCAN};
+use crate::constants::{BLOCKED, FOLLOWED, PASSING, SCAN, STALLED, STILL};
 use crate::kinematics::solve;
 use crate::motion::{advance, begin, finished, pose};
 use crate::sensors::sense;
@@ -22,6 +22,9 @@ fn complete(arm: &mut Arm) {
     arm.step += 1;
     arm.segment = None;
     arm.waited = 0.0;
+    // A stop against the last goal says nothing about the next.
+    arm.seen = None;
+    arm.stalled = false;
 
     if let Some(pending) = arm.pending.take() {
         adopt(arm, pending);
@@ -54,12 +57,32 @@ fn watch(arm: &mut Arm) {
     }
 }
 
-/// Whether the arm's physical joints, when something reports them, are within `within` of the goal. The vacuum is the controller's own, so it is not the physics' to be behind on.
+/// Keeps `stalled` current: whether the physical joints have moved less than `STILL` over the last `STALLED` seconds.
+fn track(arm: &mut Arm) {
+    let Some(mut measured) = arm.measured else {
+        return;
+    };
+    measured.grip = 0.0;
+
+    match arm.seen {
+        Some((at, seen)) if arm.clock - at >= STALLED => {
+            arm.stalled = settled(&measured, &seen, Some(STILL));
+            arm.seen = Some((arm.clock, measured));
+        }
+        Some(_) => {}
+        None => arm.seen = Some((arm.clock, measured)),
+    }
+}
+
+/// Whether the arm's physical joints, when something reports them, are within `within` of the goal, or have stopped
+/// within `BLOCKED` of it: a pad pressed onto a case comes no closer. The vacuum is the controller's own, so it is
+/// not the physics' to be behind on.
 fn arrived(arm: &Arm, within: f64) -> bool {
     arm.measured.is_none_or(|mut measured| {
         measured.grip = arm.goal.grip;
 
         settled(&measured, &arm.goal, Some(within))
+            || (arm.stalled && settled(&measured, &arm.goal, Some(BLOCKED)))
     })
 }
 
@@ -72,6 +95,8 @@ pub fn run(arm: &mut Arm, dt: f64) {
     };
 
     let picking = matches!(instruction, Instruction::Pick { .. });
+
+    track(arm);
 
     match instruction {
         Instruction::Move { to, ease } => {

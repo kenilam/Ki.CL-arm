@@ -29,6 +29,9 @@ pub struct Arm {
     pub opened: HashSet<String>,
     /// Where the arm's joints physically are, when something outside reports them: a step is not done until these have arrived too, and the sensors read from here.
     pub measured: Option<Joints>,
+    /// The physical joints as they were `STALLED` seconds ago, with the clock then, and whether they have moved since.
+    pub seen: Option<(f64, Joints)>,
+    pub stalled: bool,
     /// What is physically around the arm, for its sensors to meet.
     pub boxes: Vec<Obstacle>,
     pub scanned: f64,
@@ -55,6 +58,8 @@ pub fn boot(id: &str) -> Arm {
         holding: None,
         opened: HashSet::new(),
         measured: None,
+        seen: None,
+        stalled: false,
         boxes: Vec::new(),
         scanned: 0.0,
         clock: 0.0,
