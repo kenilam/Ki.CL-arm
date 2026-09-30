@@ -1,14 +1,10 @@
-# The bridge with its ROS 2 side, for the machine. Untested draft, written
-# 2026-09-29 evening for the next day's work.
-#
-# The base is the Isaac ROS development image that isaac_ros_common's
-# run_dev.sh pulls from nvcr.io and tags isaac_ros_dev-x86_64: ROS 2 Jazzy,
-# CUDA, and the Isaac ROS packages (cuMotion, MoveIt) already in place. Rust
-# and r2r are added on top; r2r generates its bindings against the ROS 2
-# install, so the build has to run with ROS sourced.
-FROM isaac_ros_dev-x86_64 AS build
-USER root
-RUN apt-get update && apt-get install -y --no-install-recommends curl clang libclang-dev && rm -rf /var/lib/apt/lists/*
+# The bridge with its ROS 2 side, for the machine: joint targets out to the
+# arm in Isaac Sim, joint states back. Built on the stock ROS 2 Jazzy image;
+# r2r generates its bindings against the sourced install, so the build runs
+# with ROS sourced and only the message packages it needs. Isaac ROS's
+# packages (cuMotion, MoveIt) come in when planning does.
+FROM ros:jazzy-ros-base AS build
+RUN apt-get update && apt-get install -y --no-install-recommends curl clang libclang-dev pkg-config && rm -rf /var/lib/apt/lists/*
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
 ENV PATH=/root/.cargo/bin:$PATH
 WORKDIR /src
@@ -17,10 +13,13 @@ COPY bridge bridge
 SHELL ["/bin/bash", "-c"]
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/src/bridge/target \
-    source /opt/ros/jazzy/setup.bash && cd bridge && cargo build --release -p arm-bridge --features ros2 \
+    source /opt/ros/jazzy/setup.bash \
+    && export IDL_PACKAGE_FILTER="builtin_interfaces;std_msgs;geometry_msgs;sensor_msgs" \
+    && cd bridge && cargo build --release -p arm-bridge --features ros2 \
     && cp target/release/arm-bridge /arm-bridge
 
-FROM isaac_ros_dev-x86_64
+FROM ros:jazzy-ros-base
 COPY --from=build /arm-bridge /usr/local/bin/arm-bridge
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 EXPOSE 3200
 ENTRYPOINT ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && exec arm-bridge \"$@\"", "--"]

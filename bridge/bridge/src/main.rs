@@ -6,13 +6,15 @@
 //! last hub does, because the world they work in lives in the hub.
 
 mod convert;
+#[cfg(feature = "ros2")]
+mod ros;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use arm_controller::{Controller, REPORT, TICK};
+use arm_controller::{Controller, REPORT, TICK, Telemetry};
 use arm_wire::to_arm::Body;
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
@@ -33,7 +35,15 @@ struct Args {
     /// The address to listen on. The hub dials ws://<here>/arm/link.
     #[arg(long, default_value = "0.0.0.0:3200")]
     listen: SocketAddr,
+    /// Drive arms over ROS 2 as well: joint targets out on /<id>/joint_commands, joint states in from /<id>/joint_states.
+    #[arg(long)]
+    ros: bool,
 }
+
+#[cfg(feature = "ros2")]
+type Ros = Option<Arc<ros::Ros>>;
+#[cfg(not(feature = "ros2"))]
+type Ros = Option<Arc<()>>;
 
 /// The arms, and how many hubs are dialled in.
 #[derive(Default)]
@@ -64,23 +74,36 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let args = Args::parse();
+    let ros: Ros = if args.ros {
+        #[cfg(feature = "ros2")]
+        {
+            Some(ros::Ros::start().expect("ROS 2 is up"))
+        }
+        #[cfg(not(feature = "ros2"))]
+        {
+            eprintln!("this bridge was built without the ros2 feature");
+            std::process::exit(2);
+        }
+    } else {
+        None
+    };
     let arms: Shared = Arc::default();
     // Every report goes to every hub dialled in; a slow one drops frames rather than slowing the arms.
     let (reports, _) = broadcast::channel::<Vec<u8>>(1024);
     let listener = TcpListener::bind(args.listen).await?;
 
     info!("arms on ws://{}/arm/link", args.listen);
-    tokio::spawn(servo_loop(arms.clone(), reports.clone()));
+    tokio::spawn(servo_loop(arms.clone(), reports.clone(), ros.clone()));
 
     loop {
         let (stream, peer) = listener.accept().await?;
 
-        tokio::spawn(session(stream, peer, arms.clone(), reports.clone()));
+        tokio::spawn(session(stream, peer, arms.clone(), reports.clone(), ros.clone()));
     }
 }
 
 /// The servo loop: fixed ticks, as many as the wall clock owes, then one batch of reports and, at its rate, telemetry.
-async fn servo_loop(arms: Shared, reports: broadcast::Sender<Vec<u8>>) {
+async fn servo_loop(arms: Shared, reports: broadcast::Sender<Vec<u8>>, ros: Ros) {
     let mut wake = tokio::time::interval(WAKE);
     let mut last = Instant::now();
     let mut owed = 0.0;
@@ -119,7 +142,7 @@ async fn servo_loop(arms: Shared, reports: broadcast::Sender<Vec<u8>>) {
             let mut out = controller.drain();
 
             if telemetry {
-                out.push(arm_controller::Report::Telemetry(controller.telemetry()));
+                out.push(arm_controller::Report::Telemetry(telemetry_of(&id, controller, &ros)));
             }
 
             for report in out {
@@ -130,8 +153,39 @@ async fn servo_loop(arms: Shared, reports: broadcast::Sender<Vec<u8>>) {
     }
 }
 
+/// The arm's telemetry. Over ROS the controller's joints go out as the targets, and what the physics did is what the hub is told.
+#[cfg(feature = "ros2")]
+fn telemetry_of(id: &str, controller: &Controller, ros: &Ros) -> Telemetry {
+    use arm_controller::{Pose, bearing, forward};
+
+    let mut latest = controller.telemetry();
+
+    if let Some(ros) = ros {
+        ros.command(id, &latest.joints);
+
+        if let Some(mut measured) = ros.measured(id) {
+            measured.grip = latest.joints.grip;
+            latest.joints = measured;
+            latest.pad = Pose { at: forward(&measured), facing: bearing(&measured) };
+        }
+    }
+
+    latest
+}
+
+#[cfg(not(feature = "ros2"))]
+fn telemetry_of(_id: &str, controller: &Controller, _ros: &Ros) -> Telemetry {
+    controller.telemetry()
+}
+
 /// One hub on the socket: its frames in, every arm's reports out.
-async fn session(stream: TcpStream, peer: SocketAddr, arms: Shared, reports: broadcast::Sender<Vec<u8>>) {
+async fn session(
+    stream: TcpStream,
+    peer: SocketAddr,
+    arms: Shared,
+    reports: broadcast::Sender<Vec<u8>>,
+    ros: Ros,
+) {
     let socket = match tokio_tungstenite::accept_async(stream).await {
         Ok(socket) => socket,
         Err(error) => {
@@ -156,7 +210,7 @@ async fn session(stream: TcpStream, peer: SocketAddr, arms: Shared, reports: bro
                 let Some(Ok(frame)) = frame else { break };
 
                 match frame {
-                    Message::Binary(bytes) => receive(&bytes, &arms).await,
+                    Message::Binary(bytes) => receive(&bytes, &arms, &ros).await,
                     Message::Close(_) => break,
                     _ => {}
                 }
@@ -188,7 +242,7 @@ async fn session(stream: TcpStream, peer: SocketAddr, arms: Shared, reports: bro
 }
 
 /// One frame off the socket: a command to its arm, or the scene round it.
-async fn receive(bytes: &[u8], arms: &Shared) {
+async fn receive(bytes: &[u8], arms: &Shared, ros: &Ros) {
     let message = match arm_wire::decode_to_arm(bytes) {
         Ok(message) => message,
         Err(error) => {
@@ -199,16 +253,28 @@ async fn receive(bytes: &[u8], arms: &Shared) {
     };
     let mut guard = arms.lock().await;
 
+    let id = match &message.body {
+        Some(Body::Command(command)) => command.arm.clone(),
+        Some(Body::Scene(scene)) => scene.arm.clone(),
+        None => return,
+    };
+
+    // An arm's topics come with the arm.
+    #[cfg(feature = "ros2")]
+    if let Some(ros) = ros {
+        if let Err(error) = ros.arm(&id) {
+            warn!(arm = %id, %error, "no ROS 2 topics for the arm");
+        }
+    }
+    #[cfg(not(feature = "ros2"))]
+    let _ = ros;
+
     match message.body {
         Some(Body::Command(command)) => match convert::command(command) {
-            Some(command) => {
-                let id = command.arm().to_owned();
-
-                guard.arm(&id).command(command);
-            }
+            Some(command) => guard.arm(&id).command(command),
             None => warn!("a command asked nothing"),
         },
-        Some(Body::Scene(scene)) => guard.arm(&scene.arm).feed(convert::obstacles(scene.boxes)),
+        Some(Body::Scene(scene)) => guard.arm(&id).feed(convert::obstacles(scene.boxes)),
         None => {}
     }
 }

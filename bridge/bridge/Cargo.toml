@@ -9,6 +9,11 @@ license.workspace = true
 name = "arm-bridge"
 path = "src/main.rs"
 
+[features]
+# The ROS 2 side: joint targets out and joint states in, for an arm in Isaac Sim or on a shop floor.
+# Needs a sourced ROS 2 install at build time; bridge/Dockerfile.ros2 is where that happens.
+ros2 = ["dep:r2r"]
+
 [dependencies]
 arm-wire = { path = "../wire" }
 arm-controller = { path = "../controller" }
@@ -19,3 +24,4 @@ futures-util = "0.3"
 clap = { version = "4", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+r2r = { version = "0.9", optional = true }
