@@ -3,11 +3,12 @@
 use std::collections::HashSet;
 
 use crate::constants::{BLOCKED, FOLLOWED, PASSING, SCAN, STALLED, STILL};
-use crate::kinematics::solve;
+use crate::kinematics::{forward, solve};
 use crate::motion::{advance, begin, finished, pose};
 use crate::sensors::sense;
 use crate::servo::{servo, settled};
 use crate::state::{Arm, adopt, say};
+use crate::types::Joints;
 use crate::types::{Cause, Ease, Instruction, Report, State};
 
 /// The instruction under way is done: on to the next, or to a plan that was waiting.
@@ -75,15 +76,22 @@ fn track(arm: &mut Arm) {
 }
 
 /// Whether the arm's physical joints, when something reports them, are within `within` of the goal, or have stopped
-/// within `BLOCKED` of it: a pad pressed onto a case comes no closer. The vacuum is the controller's own, so it is
-/// not the physics' to be behind on.
+/// with the pad within `BLOCKED` of where the goal puts it: a pad pressed onto a case comes no closer. The vacuum is
+/// the controller's own, so it is not the physics' to be behind on.
 fn arrived(arm: &Arm, within: f64) -> bool {
     arm.measured.is_none_or(|mut measured| {
         measured.grip = arm.goal.grip;
 
-        settled(&measured, &arm.goal, Some(within))
-            || (arm.stalled && settled(&measured, &arm.goal, Some(BLOCKED)))
+        settled(&measured, &arm.goal, Some(within)) || (arm.stalled && blocked(&measured, &arm.goal))
     })
+}
+
+/// Whether the pad, with the joints as measured, is within `BLOCKED` of where the goal would put it.
+fn blocked(measured: &Joints, goal: &Joints) -> bool {
+    let at = forward(measured);
+    let wanted = forward(goal);
+
+    ((at.x - wanted.x).powi(2) + (at.y - wanted.y).powi(2) + (at.z - wanted.z).powi(2)).sqrt() < BLOCKED
 }
 
 /// The instruction under way moves the joints a step, then the sensors are read.

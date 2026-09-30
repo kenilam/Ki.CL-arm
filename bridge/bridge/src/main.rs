@@ -25,6 +25,9 @@ use tracing::{info, warn};
 
 /// How often the loop wakes, in milliseconds; each wake runs the ticks owed since the last.
 const WAKE: Duration = Duration::from_millis(4);
+/// How often a hub is pinged, and how long one may go unheard before it is dropped.
+const PING: Duration = Duration::from_secs(5);
+const SILENT: Duration = Duration::from_secs(20);
 
 /// The most time one wake makes up for, in seconds, so a stalled process doesn't run a backlog.
 const CATCHUP: f64 = 0.25;
@@ -211,6 +214,10 @@ async fn session(
     };
     let (mut sink, mut source) = socket.split();
     let mut feed = reports.subscribe();
+    // A hub that vanished without closing, as one does when its tunnel drops, would otherwise be counted for ever,
+    // and the arms never cleared. A ping every few seconds, and a peer silent past SILENT is gone.
+    let mut ping = tokio::time::interval(PING);
+    let mut heard = Instant::now();
 
     {
         let mut guard = arms.lock().await;
@@ -223,6 +230,7 @@ async fn session(
         tokio::select! {
             frame = source.next() => {
                 let Some(Ok(frame)) = frame else { break };
+                heard = Instant::now();
 
                 match frame {
                     Message::Binary(bytes) => receive(&bytes, &arms, &ros).await,
@@ -239,6 +247,17 @@ async fn session(
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => warn!(%peer, dropped = n, "hub too slow"),
                     Err(broadcast::error::RecvError::Closed) => break,
+                }
+            }
+            _ = ping.tick() => {
+                if heard.elapsed() > SILENT {
+                    warn!(%peer, "hub silent for {}s; dropping it", SILENT.as_secs());
+
+                    break;
+                }
+
+                if sink.send(Message::Ping(Vec::new().into())).await.is_err() {
+                    break;
                 }
             }
         }
