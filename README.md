@@ -90,7 +90,7 @@ make gcp.tunnel     # localhost:3300 -> the machine's 3200; STAGE=dev -> 3201
 
 **The ROS 2 side** is the `ros2` feature, built by `bridge/Dockerfile.ros2` on the stock Jazzy image with `r2r`, and deployed with `ROS=1 make gcp.bridge`. For arm id `arm-a` the bridge publishes the joint targets its controller computes on `/arm_a/joint_commands` at the telemetry rate, and reads what the physics did from `/arm_a/joint_states`; that is what the hub is told, so the page draws Isaac Sim's arm. The arm on the other end is `sim/arm.urdf` (below). Fast DDS runs over UDP only on both sides: its shared-memory transport does not cross between containers.
 
-Two limits of this first loop, and the next two steps on the bridge: the controller does not yet wait for the physics before calling a step done, it trusts its own servo model and Isaac follows a fraction of a second behind; and cases are not in the simulator yet, so pick and place are grip flags, not contact. After those, cuMotion through MoveIt for swings round obstacles. Isaac ROS 5.0's Docker tooling is the `isaac-ros-cli` apt package (`sudo isaac-ros init docker`, `isaac-ros activate`), installed on the machine, with its image pulled; it comes in then.
+The controller is told where the arm's joints physically are before every tick, and a step is done only once those are within `FOLLOWED` (0.02 rad) of the goal, so the physics set the pace, not the servo model; the sensors read from there too. One limit remains on this loop, and it is the next step on the bridge: cases are not in the simulator yet, so pick and place are grip flags, not contact. After that, cuMotion through MoveIt for swings round obstacles. Isaac ROS 5.0's Docker tooling is the `isaac-ros-cli` apt package (`sudo isaac-ros init docker`, `isaac-ros activate`), installed on the machine, with its image pulled; it comes in then.
 
 ## The arm in Isaac Sim
 
@@ -117,7 +117,7 @@ Nothing here is public yet: the machine answers only to IAP and the bridge only 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
 2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps the floor page and everything only a page needs. Workers load through Ki.CL's `/arm` proxy.
 3. **GCP.** Done: the machine is up in `us-central1-a`, Isaac Sim 6.0.0 runs a stock Franka headless on its L4 with caches persisted. Isaac ROS comes with the bridge.
-4. **Bridge, Rust.** Done as far as the wire, the simulated arm, and the ROS 2 side driving our arm in Isaac Sim by joint targets. Next: the controller waits on the physics to settle; cases and the vacuum in the simulator; then cuMotion through MoveIt for swings round obstacles.
+4. **Bridge, Rust.** Done as far as the wire, the simulated arm, and the ROS 2 side driving our arm in Isaac Sim by joint targets with the physics setting the pace. Next: cases and the vacuum in the simulator; then cuMotion through MoveIt for swings round obstacles.
 5. **Sim content.** The arm is done (`sim/`). Next the hex floor, pallets and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor works against the sim.
 6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.
 7. **Later.** A real arm behind the same bridge, and an Isaac Lab policy proposing placements that the station's stability check still has the last word on.
