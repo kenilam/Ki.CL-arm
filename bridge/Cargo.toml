@@ -1,0 +1,15 @@
+# The arm side of the wire, in Rust: the wire's types from proto/, the
+# controller (the same one the browser runs in TypeScript today), and the
+# bridge that listens on the machine's 3200 and puts an arm behind each id.
+[workspace]
+resolver = "2"
+members = ["wire", "controller", "bridge"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+license = "ISC"
+
+[workspace.dependencies]
+prost = "0.14"
+bytes = "1"

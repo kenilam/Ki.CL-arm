@@ -1,0 +1,8 @@
+[package]
+name = "arm-controller"
+description = "One arm's controller: plans in, joint motion and reports out. The same controller the browser runs in TypeScript, so it compiles for the bridge and for Wasm alike."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

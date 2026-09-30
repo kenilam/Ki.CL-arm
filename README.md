@@ -68,12 +68,32 @@ First boot installs the NVIDIA driver, reboots once, then installs Docker and th
 
 With the tunnel open, Ki.CL needs no change: its `/arm` proxy already points at `localhost:3200`, so whatever listens on the machine's 3200 is what the page's arms talk to. For now that can be this repo's own dev server; later it is the bridge. The Isaac Sim viewport streams over WebRTC, which needs UDP, and IAP is TCP only; Tailscale on the machine is the plan for when we want to look at the sim itself.
 
+## The bridge
+
+`bridge/` is a Cargo workspace, in Rust:
+
+- `wire`: the wire's messages, generated from `proto/` at build time with a bundled `protoc`, so nothing is installed for it.
+- `controller`: one arm's controller, ported line for line from `client/src/controller` and `client/src/model/kinematics.ts`. Same plans in, same joints and reports out, same tests. It has no dependencies, so it compiles for the machine and for Wasm alike; the plan is for the browser workers to run this crate instead of the TypeScript copy, so the simulated arm and the bridge can never disagree on the protocol again.
+- `bridge`: the binary. One WebSocket, every frame one protobuf message, an arm behind each id the hub names. Today every arm is the simulated controller; Isaac's arms come in behind the same ids through ROS 2 next. Arms come into being on the first message that names them and go when the last hub does.
+
+```bash
+make bridge.test    # cargo test across the workspace
+make bridge.run     # the bridge here, on 127.0.0.1:3201
+make gcp.bridge     # build it on the machine in Docker and run it there on :3200, restarting with the machine
+make gcp.bridge.log
+make gcp.tunnel     # localhost:3300 -> the machine's 3200
+```
+
+Rust over C++ because the bridge's own work is sockets and protobuf, where Rust's libraries are the best available, and because of that shared controller. ROS 2 is reached with `r2r`, and MoveIt through its action interfaces, which need no client library.
+
+With the tunnel up, set `KICL_ARM_BRIDGE_URL=http://localhost:3300` in Ki.CL's `.env`: its dev server sends `/arm/link` there and everything else about the page stays local, so the Physical AI switch puts the page's arms on the GCP machine.
+
 ## Plan
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
 2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps the floor page and everything only a page needs. Workers load through Ki.CL's `/arm` proxy.
 3. **GCP.** Done: the machine is up in `us-central1-c`, Isaac Sim 6.0.0 runs a stock Franka headless on its L4 with caches persisted. Isaac ROS comes with the bridge.
-4. **Bridge, C++.** An `rclcpp` node with a WebSocket server, speaking this schema. Each `move` becomes a cuMotion goal through MoveIt, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop. `/joint_states` comes back as `Telemetry`. `client/src/controller/run.ts` is the spec for its behaviour.
+4. **Bridge, Rust.** Done as far as the wire and the simulated arm: `bridge/` above. Next, the ROS 2 side through `r2r`: each `move` becomes a cuMotion goal through MoveIt's actions, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop, `/joint_states` comes back as `Telemetry`.
 5. **Sim content.** The arm as a URDF from the link lengths in `client/src/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.
 6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.
 7. **Later.** A real arm behind the same bridge, and an Isaac Lab policy proposing placements that the station's stability check still has the last word on.

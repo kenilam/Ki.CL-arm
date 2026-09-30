@@ -1,0 +1,21 @@
+[package]
+name = "arm-bridge"
+description = "Listens on the machine's 3200 and puts an arm behind each id the hub names: simulated ones today, Isaac's through ROS 2 next."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "arm-bridge"
+path = "src/main.rs"
+
+[dependencies]
+arm-wire = { path = "../wire" }
+arm-controller = { path = "../controller" }
+prost = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal"] }
+tokio-tungstenite = "0.28"
+futures-util = "0.3"
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
