@@ -7,6 +7,6 @@
 export type { Command } from './commands';
 export type { Box, Point, Pose } from './geometry';
 export type { Joints } from './joints';
-export type { Link } from './link';
+export type { Feed, Link } from './link';
 export type { Ease, Instruction, Plan } from './plan';
 export type { Report, State, Telemetry } from './reports';

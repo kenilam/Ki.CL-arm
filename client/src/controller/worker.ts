@@ -15,7 +15,9 @@ const CATCHUP = 0.25;
 
 /** What reaches the worker besides commands: its own boot, and the cell's solids for its sensors to meet. */
 type Inbound =
-  Command | { type: 'boot'; arm: string } | { type: 'scene'; boxes: Box[] };
+  | Command
+  | { type: 'boot'; arm: string }
+  | { type: 'scene'; boxes: Box[]; cases?: Box[]; pallets?: Box[] };
 
 /** The worker's side of a message: `postMessage` here takes no target origin. */
 const scope = self as unknown as {

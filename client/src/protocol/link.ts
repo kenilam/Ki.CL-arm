@@ -1,4 +1,5 @@
 import type { Command } from './commands';
+import type { Box } from './geometry';
 import type { Report } from './reports';
 
 /**
@@ -6,6 +7,14 @@ import type { Report } from './reports';
  * this page, a socket to a controller box on the shop floor. The hub keeps
  * one per arm and never sees the difference.
  */
+/**
+ * The simulation's side door on a link: what is physically round the arm, in
+ * its frame. `boxes` are the obstacles its sensors would meet; `cases` and
+ * `pallets` are what stands in its cell, for a simulator that stages the
+ * cell as physics. A real arm sees the world itself.
+ */
+type Feed = (boxes: Box[], cases?: Box[], pallets?: Box[]) => void;
+
 type Link = {
   arm: string;
   send: (command: Command) => void;
@@ -13,4 +22,4 @@ type Link = {
   close: () => void;
 };
 
-export type { Link };
+export type { Feed, Link };

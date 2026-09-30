@@ -140,12 +140,15 @@ message Command {
   }
 }
 
-// What is physically around an arm, in its own frame, for its sensors to
-// meet. A simulated arm needs telling; a real one sees the world itself and
-// ignores this.
+// What is physically around an arm, in its own frame. `boxes` are the
+// obstacles its sensors would meet; `cases` and `pallets` are what stands in
+// its cell, for a simulator that stages the cell as physics. A real arm sees
+// the world itself and ignores all of it.
 message Scene {
   string arm = 1;
   repeated Box boxes = 2;
+  repeated Box cases = 3;
+  repeated Box pallets = 4;
 }
 
 // Everything that goes from the hub to the arms.

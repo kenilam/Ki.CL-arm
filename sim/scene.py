@@ -33,6 +33,8 @@ extensions = omni.kit.app.get_app().get_extension_manager()
 for name in ("omni.scene.optimizer.core", "isaacsim.robot.schema"):
     extensions.set_extension_enabled_immediate(name, True)
 
+import json  # noqa: E402
+
 import isaacsim.core.experimental.utils.app as app_utils  # noqa: E402
 import isaacsim.core.experimental.utils.stage as stage_utils  # noqa: E402
 import omni.graph.core as og  # noqa: E402
@@ -40,10 +42,13 @@ import omni.usd  # noqa: E402
 import usdrt.Sdf  # noqa: E402
 from isaacsim.asset.importer.urdf.impl import URDFImporter, URDFImporterConfig  # noqa: E402
 from isaacsim.core.simulation_manager import SimulationManager  # noqa: E402
-from pxr import Gf, UsdGeom, UsdPhysics  # noqa: E402
+from pxr import Gf, Sdf, UsdGeom, UsdPhysics  # noqa: E402
 
 app_utils.enable_extension("isaacsim.ros2.bridge")
 simulation_app.update()
+
+import rclpy  # noqa: E402  (the bridge extension's own ROS 2)
+from std_msgs.msg import Bool, String  # noqa: E402
 
 # Acceleration drives, so the gains mean the same whatever a link weighs: a
 # joint closes on its target like a spring of this natural frequency, a little
@@ -143,6 +148,122 @@ def wire(topic: str, root: str, clock: bool) -> None:
     )
 
 
+
+
+def to_sim(point):
+    """A point in the controller's frame (x across, y up, z out) in the stage's (X out, Y across, Z up)."""
+    x, y, z = point
+
+    return Gf.Vec3d(z, x, y)
+
+
+class Cell:
+    """One arm's cell as physics: pallets as fixed boxes, cases as rigid ones, and a vacuum that takes the case under the pad.
+
+    The hub says what stands where, as boxes in the arm's frame, on `/<arm>/cell`; the vacuum on `/<arm>/vacuum`.
+    A case is spawned where the hub first says it is, and never moved by hand after that: the physics own it.
+    A case the hub stops listing is removed, unless the vacuum holds it, which is what it looks like from the
+    hub's side while a case travels. The vacuum is a fixed joint between the pad and whatever case is under it.
+    """
+
+    def __init__(self, node, arm: str, topic: str, base: Gf.Vec3d, pad: str):
+        self.arm = arm
+        self.base = base
+        self.pad = pad
+        self.root = f"/World/{topic}_cell"
+        self.cases: dict[str, str] = {}
+        self.pallets: dict[str, str] = {}
+        self.held: str | None = None
+        self.joint = f"{self.root}/vacuum"
+        stage.DefinePrim(self.root, "Xform")
+        node.create_subscription(String, f"/{topic}/cell", self.on_cell, 10)
+        node.create_subscription(Bool, f"/{topic}/vacuum", self.on_vacuum, 10)
+
+    def box(self, path: str, one: dict, rigid: bool, colour) -> str:
+        lo, hi = to_sim(one["min"]), to_sim(one["max"])
+        size = hi - lo
+        prim = UsdGeom.Cube.Define(stage, path)
+
+        prim.GetSizeAttr().Set(1.0)
+        prim.GetDisplayColorAttr().Set([colour])
+        api = UsdGeom.XformCommonAPI(prim)
+        api.SetTranslate(self.base + (lo + hi) / 2)
+        api.SetScale(Gf.Vec3f(size[0], size[1], size[2]))
+        UsdPhysics.CollisionAPI.Apply(prim.GetPrim())
+
+        if rigid:
+            UsdPhysics.RigidBodyAPI.Apply(prim.GetPrim())
+            UsdPhysics.MassAPI.Apply(prim.GetPrim()).GetMassAttr().Set(8.0)
+
+        return path
+
+    def on_cell(self, message: String) -> None:
+        cell = json.loads(message.data)
+        wanted = {one["id"]: one for one in cell.get("cases", [])}
+
+        for pallet in cell.get("pallets", []):
+            if pallet["id"] not in self.pallets:
+                path = f"{self.root}/{Sdf.Path.IsValidIdentifier(pallet['id']) and pallet['id'] or 'p_' + str(len(self.pallets))}"
+                self.pallets[pallet["id"]] = self.box(path, pallet, rigid=False, colour=Gf.Vec3f(0.55, 0.4, 0.2))
+
+        for case_id, one in wanted.items():
+            if case_id not in self.cases:
+                path = f"{self.root}/case_{len(self.cases)}"
+                self.cases[case_id] = self.box(path, one, rigid=True, colour=Gf.Vec3f(0.65, 0.85, 0.45))
+
+        for case_id in list(self.cases):
+            if case_id not in wanted and case_id != self.held:
+                stage.RemovePrim(self.cases.pop(case_id))
+
+    def under_pad(self) -> str | None:
+        """The case whose top is just under the pad's face, if one is."""
+        pad = UsdGeom.Xformable(stage.GetPrimAtPath(self.pad)).ComputeLocalToWorldTransform(0)
+        # The pad's face is LINK.hand along the gripper's own X, pointing down when the hand does.
+        face = pad.Transform(Gf.Vec3d(0.5, 0, 0))
+        best = None
+
+        for case_id, path in self.cases.items():
+            case = UsdGeom.Xformable(stage.GetPrimAtPath(path))
+            at = case.ComputeLocalToWorldTransform(0).ExtractTranslation()
+            scale = UsdGeom.XformCommonAPI(case).GetXformVectors(0)[2]
+            top = at[2] + scale[2] / 2
+            inside = abs(face[0] - at[0]) < scale[0] / 2 + 0.05 and abs(face[1] - at[1]) < scale[1] / 2 + 0.05
+            gap = face[2] - top
+
+            if inside and -0.05 < gap < 0.08 and (best is None or gap < best[1]):
+                best = (case_id, gap)
+
+        return best[0] if best else None
+
+    def on_vacuum(self, message: Bool) -> None:
+        if message.data and self.held is None:
+            case_id = self.under_pad()
+
+            if case_id is None:
+                return
+
+            joint = UsdPhysics.FixedJoint.Define(stage, self.joint)
+            joint.CreateBody0Rel().SetTargets([Sdf.Path(self.pad)])
+            joint.CreateBody1Rel().SetTargets([Sdf.Path(self.cases[case_id])])
+            pad = UsdGeom.Xformable(stage.GetPrimAtPath(self.pad)).ComputeLocalToWorldTransform(0)
+            case = UsdGeom.Xformable(stage.GetPrimAtPath(self.cases[case_id])).ComputeLocalToWorldTransform(0)
+            # Where the case sits in the pad's frame, so the joint holds it exactly where the vacuum found it.
+            local = case * pad.GetInverse()
+            joint.CreateLocalPos0Attr().Set(Gf.Vec3f(local.ExtractTranslation()))
+            joint.CreateLocalRot0Attr().Set(Gf.Quatf(local.ExtractRotationQuat()))
+            joint.CreateLocalPos1Attr().Set(Gf.Vec3f(0, 0, 0))
+            joint.CreateLocalRot1Attr().Set(Gf.Quatf(1, 0, 0, 0))
+            self.held = case_id
+            print(f"scene: {self.arm} vacuum takes {case_id}")
+        elif not message.data and self.held is not None:
+            stage.RemovePrim(self.joint)
+            print(f"scene: {self.arm} vacuum lets go of {self.held}")
+            self.held = None
+
+
+rclpy.init()
+ros = rclpy.create_node("arm_cells")
+cells: list[Cell] = []
 arms = [one.strip() for one in args.arms.split(",") if one.strip()]
 
 for index, arm in enumerate(arms):
@@ -157,7 +278,8 @@ for index, arm in enumerate(arms):
     root = articulation(path)
 
     wire(topic, root, clock=index == 0)
-    print(f"scene: {arm} at {root}, on /{topic}/joint_states and /{topic}/joint_commands")
+    cells.append(Cell(ros, arm, topic, Gf.Vec3d(0, index * args.spacing, 0), f"{path}/gripper"))
+    print(f"scene: {arm} at {root}, on /{topic}/joint_states and /{topic}/joint_commands, cell on /{topic}/cell")
 
 simulation_app.update()
 SimulationManager.setup_simulation(dt=1.0 / 60.0, device="cpu")
@@ -168,6 +290,7 @@ print("scene: playing")
 frames = 0
 
 while simulation_app.is_running():
+    rclpy.spin_once(ros, timeout_sec=0)
     simulation_app.update()
     frames += 1
 
@@ -175,4 +298,5 @@ while simulation_app.is_running():
         break
 
 app_utils.stop()
+rclpy.shutdown()
 simulation_app.close()
