@@ -22,6 +22,8 @@ PORT="${PORT:-3200}"
 # The machine stops itself every night at this hour, so a forgotten box costs one evening, not a month.
 STOP_AT="${STOP_AT:-22}"
 TIMEZONE="${TIMEZONE:-America/Los_Angeles}"
+# The Secret Manager secret holding the NGC API key; the machine reads it itself to log Docker in to nvcr.io.
+NGC_SECRET="${NGC_SECRET:-ngc-api-key}"
 TAG="arm"
 IAP_RANGE="35.235.240.0/20"
 

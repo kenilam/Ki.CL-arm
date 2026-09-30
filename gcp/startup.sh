@@ -18,10 +18,21 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y ca-certificates curl gnupg ubuntu-drivers-common
 
+DRIVER_MARK=/var/lib/arm/driver
+
 if ! command -v nvidia-smi >/dev/null; then
-  log "installing the NVIDIA driver"
-  ubuntu-drivers install --gpgpu
-  mkdir -p "$(dirname "$MARK")"
+  if [ -f "$DRIVER_MARK" ]; then
+    log "the driver was installed and rebooted into, yet nvidia-smi is missing; stopping here"
+    exit 1
+  fi
+
+  # The recommended server driver, by name, so nvidia-smi comes with it: `--gpgpu` alone leaves the utilities out.
+  driver="$(ubuntu-drivers devices 2>/dev/null | grep -oE 'nvidia-driver-[0-9]+-server' | sort -u | tail -n 1)"
+  driver="${driver:-nvidia-driver-570-server}"
+  log "installing $driver"
+  apt-get install -y "$driver" "${driver/driver/utils}"
+  mkdir -p "$(dirname "$DRIVER_MARK")"
+  touch "$DRIVER_MARK"
   log "rebooting for the driver"
   reboot
   exit 0
@@ -50,6 +61,14 @@ fi
 
 # Isaac Sim and Isaac ROS run as containers; the whole point of the machine is the GPU inside them.
 docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi --query-gpu=name --format=csv,noheader
+
+# Those containers come from NVIDIA's registry. The key sits in Secret Manager and the machine's own account reads it, so it never travels through a laptop.
+secret="$(curl -sf -H 'Metadata-Flavor: Google' http://metadata.google.internal/computeMetadata/v1/instance/attributes/ngc-secret || true)"
+if [ -n "$secret" ] && key="$(gcloud secrets versions access latest --secret "$secret" 2>/dev/null)"; then
+  printf '%s' "$key" | docker login nvcr.io --username '$oauthtoken' --password-stdin >/dev/null && log "logged in to nvcr.io"
+else
+  log "no NGC key in Secret Manager yet (secret: ${secret:-unset}); make gcp.ngc puts one there"
+fi
 
 mkdir -p "$(dirname "$MARK")"
 touch "$MARK"
