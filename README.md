@@ -88,6 +88,16 @@ Rust over C++ because the bridge's own work is sockets and protobuf, where Rust'
 
 With the tunnel up, set `KICL_ARM_BRIDGE_URL=http://localhost:3300` in Ki.CL's `.env`: its dev server sends `/arm/link` there and everything else about the page stays local, so the Physical AI switch puts the page's arms on the GCP machine.
 
+## Going public: the gateway
+
+Nothing here is public yet: the machine answers only to IAP and the bridge only inside the VPC. When the experiment goes public, this is the shape, agreed 2026-09-29:
+
+- **The machine is for Isaac sessions only.** It stops itself nightly and after 30 minutes with no hub on the bridge (10 with nobody switched over). Standing cost is the disk and NAT; the L4 bills by the hour it is actually used.
+- **A front door in this repo**, the dev server with a production mode on Cloud Run, scaled to zero: it serves the built remote at `/arm/*`, proxies `/arm/link` to the machine's internal address over Direct VPC egress, and offers `POST /arm/wake` (starts the machine through the Compute API with a service account allowed to start that one instance) and `GET /arm/status` (machine running, bridge answering).
+- **Waking.** When a visitor loads a simulation, the page asks for a wake; the button shows a spinner until the hub's dial of `/arm/link` gets its first telemetry, about two minutes from cold; then the robot icon appears and the visitor chooses to switch. The local workers run the whole time.
+- **Every public call is gated.** The browser holds no secret. Ki.CL's own server proxies `/arm` and mints a Google ID token per call, the way it already does for `/api`; the gateway runs `--no-allow-unauthenticated`. `/arm/wake` also needs the visitor's Turnstile-backed session token from Ki.CL-back, verified by signature, and a global rate limit on starts. The bridge checks a bearer on the WebSocket handshake that only the gateway holds. Isaac Sim's viewport is never exposed.
+- **One machine, many visitors.** The bridge namespaces arms per connection for the simulated controller; a single Isaac Sim world admits one visitor at a time.
+
 ## Plan
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
