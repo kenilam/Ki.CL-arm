@@ -36,7 +36,7 @@ const handle = (station: Station, report: Report) => {
 
       return;
     case 'rejected':
-      note(station, 'Arm refused the plan', 'error', report.reason);
+      note(station, 'arm refused the plan', 'error', report.reason);
       station.resend = true;
 
       return;
@@ -53,7 +53,7 @@ const handle = (station: Station, report: Report) => {
         report.seen.forEach((id) => station.sensed.add(id));
         note(
           station,
-          `Arm found ${report.seen.join(', ')} in its way`,
+          `arm found ${report.seen.join(', ')} in its way`,
           'warning',
           'planning again'
         );
@@ -137,7 +137,7 @@ const progress = (
     station.touching = true;
     note(
       station,
-      `Set ${label(move.id)} down`,
+      `set ${label(move.id)} down`,
       move.to === BUFFER ? 'warning' : 'confirm',
       move.to === BUFFER
         ? 'on the buffer'

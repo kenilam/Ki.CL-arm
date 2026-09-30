@@ -93,9 +93,9 @@ const strike = (station: State) => {
 
   if (now.length && !was.length) {
     say(station, { type: 'alarm' });
-    note(station, `Struck by ${now.join(', ')}`, 'error', 'move it clear');
+    note(station, `struck by ${now.join(', ')}`, 'error', 'move it clear');
   } else if (!now.length && was.length) {
-    note(station, 'Clear again', 'confirm', 'carrying on');
+    note(station, 'clear again', 'confirm', 'carrying on');
 
     if (!station.halted) {
       say(station, { type: 'calm' });
@@ -127,7 +127,9 @@ const create = ({
   capacity?: Capacity;
 }) => {
   const station = boot(id, layout, link);
-  const unlisten = link.listen((report) => handle(station, report));
+  let unlisten = link.listen((report) => handle(station, report));
+  /** A link to put the arm on instead, once the arm is between jobs and holding nothing. */
+  let coming: Link | null = null;
   const claims = new Map<string, Claim>();
   const taken: number[] = [];
   /** Pallets left where they are for want of a belt, so the log says so once. */
@@ -177,7 +179,7 @@ const create = ({
     if (!belt && !here(target)) {
       note(
         station,
-        `No belt past ${id} toward cell ${target.to.q},${target.to.r}`,
+        `no belt past ${id} toward cell ${target.to.q},${target.to.r}`,
         'error'
       );
 
@@ -251,7 +253,7 @@ const create = ({
       // Only what still stands on the pallet is left to send; the rest went out or waits on the buffer.
       target.queue.filter((one) => left.some(({ id: kept }) => kept === one))
     );
-    note(station, `Put pallet ${target.id} back`, 'info');
+    note(station, `put pallet ${target.id} back`, 'info');
     show(station);
   };
 
@@ -297,7 +299,7 @@ const create = ({
           stuck.add(target.id);
           note(
             station,
-            `Leaving pallet ${target.id}`,
+            `leaving pallet ${target.id}`,
             'error',
             `no belt past ${id} toward cell ${target.to.q},${target.to.r}`
           );
@@ -334,7 +336,7 @@ const create = ({
     const belt = layout.belts.find((one) => one.id === line);
 
     if (!belt) {
-      note(station, `No belt ${line} past ${id}`, 'error');
+      note(station, `no belt ${line} past ${id}`, 'error');
 
       return false;
     }
@@ -348,7 +350,7 @@ const create = ({
     }
 
     station.queue.push({ belt, target, of: null, to });
-    note(station, `Queued ${label(target)}`, 'confirm', 'for the belt');
+    note(station, `queued ${label(target)}`, 'confirm', 'for the belt');
 
     if (station.job) {
       rethink(station);
@@ -358,6 +360,38 @@ const create = ({
   };
 
   /** Starts over with `catalogue` the obstacles the cell may hold, the arm sent home. */
+  /** Takes an arm as found: stopped and reset, then sent to rest once it has said where it is, since an arm that outlived the last hub would refuse a revision it has already had. */
+  const greet = () => {
+    station.telemetry = null;
+    station.link.send({ type: 'stop', arm: id });
+    station.link.send({ type: 'reset', arm: id });
+    station.homing = true;
+  };
+
+  /**
+   * Puts the arm on `to` instead of the link it has now. Not straight away:
+   * an arm mid-move with a case on the pad has state the arm on the other
+   * end knows nothing of, so the swap waits for the moment between jobs,
+   * and the world carries on across it.
+   */
+  const relink = (to: Link) => {
+    coming?.close();
+    coming = to;
+  };
+
+  const swap = () => {
+    if (!coming || station.job || station.holding) {
+      return;
+    }
+
+    unlisten();
+    station.link.close();
+    station.link = coming;
+    coming = null;
+    unlisten = station.link.listen((report) => handle(station, report));
+    greet();
+  };
+
   const load = (catalogue: Box[]) => {
     claims.clear();
     stuck.clear();
@@ -377,10 +411,7 @@ const create = ({
     station.parked.clear();
     station.waiting.clear();
     station.stalled = 0;
-    link.send({ type: 'stop', arm: id });
-    link.send({ type: 'reset', arm: id });
-    // The rest plan waits for the arm's first telemetry: an arm that outlived the last hub would refuse a revision it has already had.
-    station.homing = true;
+    greet();
     show(station);
   };
 
@@ -580,6 +611,7 @@ const create = ({
     station.clock += dt;
     station.riders = new Map(riders.map((rider) => [rider.id, rider]));
     station.moving = new Set(moving);
+    swap();
 
     if (station.unsettled && station.clock - station.moved >= SETTLE) {
       station.unsettled = false;
@@ -658,7 +690,8 @@ const create = ({
 
   const close = () => {
     unlisten();
-    link.close();
+    station.link.close();
+    coming?.close();
   };
 
   return {
@@ -676,6 +709,7 @@ const create = ({
     pause,
     ready,
     receive,
+    relink,
     snapshot,
     tick,
   };

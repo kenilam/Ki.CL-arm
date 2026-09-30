@@ -171,11 +171,11 @@ describe('a station', () => {
       notes.join('\n')
     );
     assert.ok(
-      notes.some((text) => text.startsWith('Set case 1rf down on the belt')),
+      notes.some((text) => text.startsWith('set case 1rf down on the belt')),
       notes.join('\n')
     );
     assert.ok(
-      notes.some((text) => text.startsWith('Put pallet p1 back')),
+      notes.some((text) => text.startsWith('put pallet p1 back')),
       notes.join('\n')
     );
     assert.equal(events.filter((event) => event.type === 'placed').length, 2);
@@ -207,13 +207,52 @@ describe('a station', () => {
     const notes = texts(events);
 
     assert.ok(
-      !notes.some((text) => text.startsWith('Arm refused the plan')),
+      !notes.some((text) => text.startsWith('arm refused the plan')),
       notes.join('\n')
     );
     assert.ok(
-      notes.some((text) => text.startsWith('Put pallet p1 back')),
+      notes.some((text) => text.startsWith('put pallet p1 back')),
       notes.join('\n')
     );
+  });
+
+  test('carries on with a new arm when relinked between cases', () => {
+    const { station, wire, board: made, target } = setup(['1rf', '1lf']);
+    const second = local('arm-a');
+    const heard: string[] = [];
+    const events: ReturnType<typeof station.drain> = [];
+    const frame = 1 / 60;
+    let claimed = false;
+    let linger = 6;
+
+    second.listen((report) => heard.push(report.type));
+
+    for (let at = 0; at < 90 && linger > 0; at += frame) {
+      if (Math.abs(at - 3) < frame / 2) {
+        station.relink(second);
+      }
+
+      claimed ||= target.claimed !== null;
+      linger -= claimed && target.claimed === null ? frame : 0;
+      wire.tick(frame);
+      second.tick(frame);
+      station.tick(frame, made, []);
+      events.push(...station.drain());
+    }
+
+    const notes = texts(events);
+
+    assert.ok(heard.includes('loaded'), 'the new arm was never given a plan');
+    assert.ok(
+      !notes.some((text) => text.startsWith('arm refused the plan')),
+      notes.join('\n')
+    );
+    assert.ok(
+      notes.some((text) => text.startsWith('put pallet p1 back')),
+      notes.join('\n')
+    );
+    assert.equal(events.filter((event) => event.type === 'placed').length, 2);
+    assert.equal(target.cases.length, 6);
   });
 
   test('moves what is on top of a buried case to the buffer first', () => {
@@ -222,7 +261,7 @@ describe('a station', () => {
     const notes = texts(events);
 
     assert.ok(
-      notes.some((text) => text.startsWith('Set case 1rf down on the buffer')),
+      notes.some((text) => text.startsWith('set case 1rf down on the buffer')),
       notes.join('\n')
     );
     assert.ok(target.cases.every(({ id }) => id !== '0rf'));
@@ -260,7 +299,7 @@ describe('a station', () => {
     assert.ok(
       events.some(
         (event) =>
-          event.type === 'note' && event.text.startsWith('Leaving pallet')
+          event.type === 'note' && event.text.startsWith('leaving pallet')
       )
     );
   });
@@ -294,7 +333,7 @@ describe('a station', () => {
 
     assert.ok(events.some((event) => event.type === 'alarm'));
     assert.ok(
-      texts(events).includes('Stopped no slot left for another pallet')
+      texts(events).includes('stopped no slot left for another pallet')
     );
     assert.equal(station.ready(rider.belt), false);
   });

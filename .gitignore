@@ -3,3 +3,4 @@ dist/
 .yarn/*
 !.yarn/releases
 .DS_Store
+.history/

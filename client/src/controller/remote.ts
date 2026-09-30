@@ -68,6 +68,17 @@ const dial = (address: string) => {
     };
   };
 
+  const shut = () => {
+    closed = true;
+    handlers.clear();
+
+    if (retry) {
+      clearTimeout(retry);
+    }
+
+    socket?.close();
+  };
+
   const send = (message: ToArm) => {
     const bytes = encodeToArm(message);
 
@@ -101,19 +112,15 @@ const dial = (address: string) => {
         close: () => {
           own.clear();
           handlers.delete(arm);
+
+          // The last link off the wire takes the socket with it.
+          if (!handlers.size) {
+            shut();
+          }
         },
       };
     },
-    close: () => {
-      closed = true;
-      handlers.clear();
-
-      if (retry) {
-        clearTimeout(retry);
-      }
-
-      socket?.close();
-    },
+    close: shut,
   };
 };
 
