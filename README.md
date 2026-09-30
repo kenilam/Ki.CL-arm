@@ -45,11 +45,30 @@ Ki.CL gets its types for `arm/*` from the remote's `@mf-types.zip`, pulled by th
 - `server/index.ts`: the simulated controller behind the wire, and the reference for what the bridge has to do. An arm keeps running when a hub goes away, so its telemetry carries the last plan revision it accepted and a new hub numbers its plans after it.
 - Ki.CL's floor reads `KICL_ARM_LINK` (for example `/arm/link`) and shows a Physical AI button in its panel. On, the arms are on the socket. Off, they run in workers on the page.
 
+## The GCP machine
+
+Isaac Sim and Isaac ROS run on one GPU machine in GCP, and the page reaches it over an IAP tunnel. `gcp/env.sh` describes the machine: project from `gcloud config`, `us-central1-a`, a `g2-standard-8` (an L4 comes with it), 200 GB, Ubuntu 22.04, no public address. Override any of it from the environment: `ZONE=europe-west4-b make gcp.up`, `SPOT=1 make gcp.up` for a preemptible box.
+
+```bash
+gcloud auth login
+make gcp.quota    # L4s in the region and GPUs anywhere; both start at 0 and a request can take a day
+make gcp.up       # APIs, the IAP-only firewall rule, a nightly stop, then the machine; run again to start it
+make gcp.status   # state, and the tail of what the startup script said
+make gcp.ssh      # a shell there, over IAP
+NGC_API_KEY=… make gcp.ngc   # docker login to nvcr.io on the machine, key over ssh, never stored
+make gcp.tunnel   # localhost:3200 -> the machine's 3200
+make gcp.down     # stop; the disk stays. make gcp.delete takes it all away
+```
+
+First boot installs the NVIDIA driver, reboots once, then installs Docker and the NVIDIA container toolkit and proves a container can see the GPU. `make gcp.status` shows it happen. The machine stops itself at 22:00 (`STOP_AT`, `TIMEZONE`) so a forgotten box costs an evening, not a month; it bills whenever it is up.
+
+With the tunnel open, Ki.CL needs no change: its `/arm` proxy already points at `localhost:3200`, so whatever listens on the machine's 3200 is what the page's arms talk to. For now that can be this repo's own dev server; later it is the bridge. The Isaac Sim viewport streams over WebRTC, which needs UDP, and IAP is TCP only; Tailscale on the machine is the plan for when we want to look at the sim itself.
+
 ## Plan
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
 2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps the floor page and everything only a page needs. Workers load through Ki.CL's `/arm` proxy.
-3. **GCP.** One `g2-standard-8` with an L4, no public IP, Isaac Sim and Isaac ROS containers, reached over an IAP tunnel. `make gcp.up`, `gcp.down`, `gcp.tunnel`. Tailscale on the VM for the Isaac Sim viewport, since WebRTC needs UDP and IAP is TCP only.
+3. **GCP.** Scripts done, above. Next: quota granted, the machine up, Isaac Sim and Isaac ROS containers pulled and a stock arm running headless.
 4. **Bridge, C++.** An `rclcpp` node with a WebSocket server, speaking this schema. Each `move` becomes a cuMotion goal through MoveIt, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop. `/joint_states` comes back as `Telemetry`. `client/src/controller/run.ts` is the spec for its behaviour.
 5. **Sim content.** The arm as a URDF from the link lengths in `client/src/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.
 6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.
