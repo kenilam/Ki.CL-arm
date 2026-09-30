@@ -237,6 +237,8 @@ class Cell:
             if case_id not in wanted and case_id != self.held:
                 stage.RemovePrim(self.cases.pop(case_id))
 
+        print(f"scene: {self.arm} cell has {len(self.cases)} cases on {len(self.pallets)} pallets")
+
     def under_pad(self) -> str | None:
         """The case whose top is just under the pad's face, if one is."""
         pad = UsdGeom.Xformable(stage.GetPrimAtPath(self.pad)).ComputeLocalToWorldTransform(0)
@@ -265,6 +267,13 @@ class Cell:
             case_id = self.under_pad()
 
             if case_id is None:
+                pad = UsdGeom.Xformable(stage.GetPrimAtPath(self.pad)).ComputeLocalToWorldTransform(0)
+                face = pad.Transform(Gf.Vec3d(0.5, 0, 0))
+                cases = {
+                    one: tuple(round(v, 3) for v in UsdGeom.Xformable(stage.GetPrimAtPath(path)).ComputeLocalToWorldTransform(0).ExtractTranslation())
+                    for one, path in self.cases.items()
+                }
+                print(f"scene: {self.arm} vacuum on, nothing under the pad: face {tuple(round(v, 3) for v in face)}, cases {cases}")
                 return
 
             joint = UsdPhysics.FixedJoint.Define(stage, self.joint)
