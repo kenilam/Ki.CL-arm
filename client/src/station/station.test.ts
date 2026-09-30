@@ -14,6 +14,9 @@ import type { Board, Target } from '../hub/board';
 // Partials
 import { create } from './station';
 
+// Protocol
+import type { Report } from '../protocol';
+
 // Spec
 import type { Case } from './spec';
 
@@ -333,5 +336,101 @@ describe('a station', () => {
     assert.ok(events.some((event) => event.type === 'alarm'));
     assert.ok(texts(events).includes('stopped no slot left'));
     assert.equal(station.ready(rider.belt), false);
+  });
+});
+
+describe('perception', () => {
+  test('moves a case to where it is seen, and says so once when it has strayed', () => {
+    const wire = local('arm-a');
+    const handlers = new Set<(report: Report) => void>();
+    // The worker's link, with a way in for reports the worker never sends.
+    const link = {
+      ...wire,
+      listen: (handler: (report: Report) => void) => {
+        handlers.add(handler);
+
+        const off = wire.listen(handler);
+
+        return () => {
+          handlers.delete(handler);
+          off();
+        };
+      },
+    };
+    const station = create({
+      id: 'arm-a',
+      hex: HEX,
+      layout: layout({
+        belts: [
+          stretch(line('a>b', [HEX, neighbour(HEX, 0)]), HEX, {
+            end: false,
+            downstream: [neighbour(HEX, 0)],
+          }),
+        ],
+      }),
+      link,
+    });
+    const { board: made } = board(['1rf']);
+    const frame = 1 / 60;
+
+    station.load([]);
+
+    for (let at = 0; at < 5 && !station.snapshot().cases['1rf']; at += frame) {
+      wire.tick(frame);
+      station.tick(frame, made, []);
+    }
+
+    const own = station.snapshot().cases['1rf'];
+
+    assert.ok(own, 'the station never took the pallet');
+    station.drain();
+
+    const [w, h, d] = own.size;
+    // Where it stood before perception speaks: the station moves the very object, so a copy.
+    const stood = { ...own.at };
+    const seen = (shift: number): Report => ({
+      type: 'seen',
+      arm: 'arm-a',
+      cases: [
+        {
+          id: '1rf',
+          min: {
+            x: stood.x + shift - w / 2,
+            y: stood.y - h / 2,
+            z: stood.z - d / 2,
+          },
+          max: {
+            x: stood.x + shift + w / 2,
+            y: stood.y + h / 2,
+            z: stood.z + d / 2,
+          },
+        },
+      ],
+      others: [],
+      held: null,
+    });
+
+    // A hair off: left where it is.
+    handlers.forEach((handler) => handler(seen(0.01)));
+    assert.ok(
+      Math.abs(station.snapshot().cases['1rf'].at.x - stood.x) < 1e-9,
+      `hair: ${station.snapshot().cases['1rf'].at.x} vs ${stood.x}`
+    );
+
+    // Well off: moved there, and said once.
+    handlers.forEach((handler) => handler(seen(0.3)));
+    handlers.forEach((handler) => handler(seen(0.3)));
+
+    const notes = texts(station.drain());
+
+    assert.ok(
+      Math.abs(station.snapshot().cases['1rf'].at.x - (stood.x + 0.3)) < 1e-6,
+      `moved: ${JSON.stringify(station.snapshot().cases['1rf'].at)} vs ${JSON.stringify(stood)}`
+    );
+    assert.equal(
+      notes.filter((text) => text.startsWith('1rf strayed')).length,
+      1,
+      notes.join('\n')
+    );
   });
 });
