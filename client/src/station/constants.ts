@@ -15,6 +15,9 @@ const ROOM = 0.6;
 const LOOKOUT = ROOM + 0.35 * 2.5;
 
 /** Seconds after an obstacle last moved before refused cases are tried again. */
+/** How long the station waits after a refused plan before sending again, in seconds: refusals that come from a mismatch do not clear by themselves, so asking every tick only floods the log. */
+const RESEND = 1;
+
 const SETTLE = 0.4;
 
-export { DECK, LOOKOUT, ROOM, SETTLE };
+export { DECK, LOOKOUT, RESEND, ROOM, SETTLE };

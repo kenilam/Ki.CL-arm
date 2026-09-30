@@ -85,6 +85,8 @@ type Station = {
   dirty: boolean;
   /** The arm refused the last plan: it's planned again from where the arm is. */
   resend: boolean;
+  /** When the next plan may go after a refusal, on the station's clock. */
+  resendAt: number;
   events: Event[];
   clock: number;
   /** When the operator last moved an obstacle, and whether refused cases have been tried since. */
@@ -118,6 +120,7 @@ const boot = (id: string, layout: Layout, link: Link): Station => ({
   homing: false,
   dirty: false,
   resend: false,
+  resendAt: 0,
   events: [],
   clock: 0,
   moved: 0,
