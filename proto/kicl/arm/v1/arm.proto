@@ -161,6 +161,7 @@ message Telemetry {
   // Seconds since the controller booted.
   double at = 1;
   State state = 2;
+  // The last plan accepted, kept through a reset; unset before any.
   optional uint32 revision = 3;
   // The instruction under way, or the count when the plan is done.
   uint32 step = 4;
