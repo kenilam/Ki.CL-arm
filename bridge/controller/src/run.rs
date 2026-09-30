@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::constants::{BLOCKED, FOLLOWED, PASSING, SCAN, STALLED, STILL};
+use crate::constants::{BLOCKED, FOLLOWED, PASSING, PLACING, SCAN, STALLED, STILL};
 use crate::kinematics::{forward, solve};
 use crate::motion::{advance, begin, finished, pose};
 use crate::sensors::sense;
@@ -95,20 +95,20 @@ fn track(arm: &mut Arm) {
 /// Whether the arm's physical joints, when something reports them, are within `within` of the goal, or have stopped
 /// with the pad within `BLOCKED` of where the goal puts it: a pad pressed onto a case comes no closer. The vacuum is
 /// the controller's own, so it is not the physics' to be behind on.
-fn arrived(arm: &Arm, within: f64) -> bool {
+fn arrived(arm: &Arm, within: f64, short: f64) -> bool {
     arm.measured.is_none_or(|mut measured| {
         measured.grip = arm.goal.grip;
 
-        settled(&measured, &arm.goal, Some(within)) || (arm.stalled && blocked(&measured, &arm.goal))
+        settled(&measured, &arm.goal, Some(within)) || (arm.stalled && blocked(&measured, &arm.goal, short))
     })
 }
 
-/// Whether the pad, with the joints as measured, is within `BLOCKED` of where the goal would put it.
-fn blocked(measured: &Joints, goal: &Joints) -> bool {
+/// Whether the pad, with the joints as measured, is within `short` of where the goal would put it.
+fn blocked(measured: &Joints, goal: &Joints, short: f64) -> bool {
     let at = forward(measured);
     let wanted = forward(goal);
 
-    ((at.x - wanted.x).powi(2) + (at.y - wanted.y).powi(2) + (at.z - wanted.z).powi(2)).sqrt() < BLOCKED
+    ((at.x - wanted.x).powi(2) + (at.y - wanted.y).powi(2) + (at.z - wanted.z).powi(2)).sqrt() < short
 }
 
 /// The instruction under way moves the joints a step, then the sensors are read.
@@ -133,15 +133,18 @@ pub fn run(arm: &mut Arm, dt: f64) {
             arm.drive = servo(&arm.drive, &arm.goal, dt);
 
             // A swing into another move passes through; anything else is reached exactly.
-            let next_is_move = arm
-                .plan
-                .as_ref()
-                .and_then(|plan| plan.instructions.get(arm.step as usize + 1))
-                .is_some_and(|next| matches!(next, Instruction::Move { .. }));
+            let next = arm.plan.as_ref().and_then(|plan| plan.instructions.get(arm.step as usize + 1));
+            let next_is_move = next.is_some_and(|next| matches!(next, Instruction::Move { .. }));
+            // Down onto a place, a stop short is the case resting on something: that is down.
+            let short = if next.is_some_and(|next| matches!(next, Instruction::Place { .. })) {
+                PLACING
+            } else {
+                BLOCKED
+            };
             let within = (ease == Ease::Swing && next_is_move).then_some(PASSING);
             let done = finished(&segment)
                 && settled(&arm.drive.joints, &arm.goal, within)
-                && arrived(arm, within.map_or(FOLLOWED, |passing| passing.max(FOLLOWED)));
+                && arrived(arm, within.map_or(FOLLOWED, |passing| passing.max(FOLLOWED)), short);
 
             arm.segment = Some(segment);
 
@@ -152,13 +155,13 @@ pub fn run(arm: &mut Arm, dt: f64) {
         Instruction::Pick { case } | Instruction::Place { case } => {
             // The vacuum switches only once the physical arm is at the pose too: switched on the model's say-so, it
             // would let a case go from wherever the physics still are.
-            if arrived(arm, FOLLOWED) {
+            if arrived(arm, FOLLOWED, BLOCKED) {
                 arm.goal.grip = if picking { 1.0 } else { 0.0 };
             }
 
             arm.drive = servo(&arm.drive, &arm.goal, dt);
 
-            if arrived(arm, FOLLOWED) && settled(&arm.drive.joints, &arm.goal, None) {
+            if arrived(arm, FOLLOWED, BLOCKED) && settled(&arm.drive.joints, &arm.goal, None) {
                 arm.holding = picking.then_some(case);
                 complete(arm);
             }
