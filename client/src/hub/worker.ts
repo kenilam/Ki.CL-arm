@@ -14,18 +14,22 @@ import type { Event } from '../station/events';
 
 // Partials
 import type { Capacity, Target } from './board';
+import type { Floor } from './floor';
 import { type Cell, create, type Hub, type Line, type Riding } from './hub';
 
 /** How often the hub runs its stations, in milliseconds. */
 const WAKE = 1000 / 30;
 
 /**
- * What the console sends the hub. `build` with a `link` puts the arms on a
- * bridge at that address rather than in workers here. `scene` is the
- * simulation's side door: the boxes an arm's sensors would meet, which a
- * real arm gets from the world itself.
+ * What the console sends the hub. `floor` is the whole thing at once: the
+ * hub builds from the configuration and is ready to run. The rest change a
+ * running floor one piece at a time. A `link` puts the arms on a bridge at
+ * that address rather than in workers here. `scene` is the simulation's
+ * side door: the boxes an arm's sensors would meet, which a real arm gets
+ * from the world itself.
  */
 type Inbound =
+  | { type: 'floor'; floor: Floor; link?: string }
   | { type: 'build'; cells: Cell[]; lines: Line[]; link?: string }
   | { type: 'load'; hex: Hex }
   | { type: 'block'; boxes: Box[]; moved: boolean }
@@ -113,40 +117,57 @@ const wake = () => {
   }
 };
 
+/** A new hub from `cells` and `lines`, its arms in workers here or on the bridge at `link`. */
+const build = (cells: Cell[], lines: Line[], link?: string) => {
+  hub?.close();
+  wire?.close();
+  wire = link ? dial(link) : null;
+  // Each arm's controller runs in a worker of its own, as its own box would, unless a bridge has them.
+  hub = create({
+    cells,
+    lines,
+    connect: (arm) => {
+      const found = wire ? wire.link(arm) : connect(arm);
+
+      feeds.set(arm, found.feed);
+
+      return found;
+    },
+    feed: (arm, boxes) => feeds.get(arm)?.(boxes),
+  });
+  last = performance.now();
+  shown = '';
+  rode.clear();
+  loop ??= setInterval(wake, WAKE);
+  scope.postMessage([
+    {
+      type: 'layouts',
+      stations: [...hub.stations.values()].map(({ hex, id, layout }) => ({
+        arm: id,
+        hex,
+        layout,
+      })),
+      lines: hub.floor,
+    },
+  ]);
+};
+
 scope.onmessage = ({ data }) => {
   switch (data.type) {
+    case 'floor':
+      build(data.floor.cells, data.floor.lines, data.link);
+      // Before the stations load, so each starts knowing what stands in its cell.
+      hub?.block(data.floor.obstacles ?? [], false);
+      data.floor.cells.forEach(({ hex }) => hub?.load(hex));
+      data.floor.pallets.forEach((target) => hub?.place(target));
+      Object.entries(data.floor.capacities ?? {}).forEach(([arm, capacity]) =>
+        hub?.configure(arm, capacity)
+      );
+
+      return;
     case 'build':
-      hub?.close();
-      wire?.close();
-      wire = data.link ? dial(data.link) : null;
-      // Each arm's controller runs in a worker of its own, as its own box would, unless a bridge has them.
-      hub = create({
-        cells: data.cells,
-        lines: data.lines,
-        connect: (arm) => {
-          const link = wire ? wire.link(arm) : connect(arm);
+      build(data.cells, data.lines, data.link);
 
-          feeds.set(arm, link.feed);
-
-          return link;
-        },
-        feed: (arm, boxes) => feeds.get(arm)?.(boxes),
-      });
-      last = performance.now();
-      shown = '';
-      rode.clear();
-      loop ??= setInterval(wake, WAKE);
-      scope.postMessage([
-        {
-          type: 'layouts',
-          stations: [...hub.stations.values()].map(({ hex, id, layout }) => ({
-            arm: id,
-            hex,
-            layout,
-          })),
-          lines: hub.floor,
-        },
-      ]);
       return;
     case 'load':
       hub?.load(data.hex);
