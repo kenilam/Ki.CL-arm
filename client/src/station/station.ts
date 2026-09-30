@@ -405,6 +405,8 @@ const create = ({
       if (holding) {
         station.cases[holding.id] = holding;
         station.holding = null;
+        // The pad stands on that case now, so the next move rises before it swings.
+        station.touching = true;
       }
 
       if (job) {
