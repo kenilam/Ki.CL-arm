@@ -55,7 +55,7 @@ make gcp.quota    # L4s in the region and GPUs anywhere; both start at 0 and a r
 make gcp.up       # APIs, the IAP-only firewall rule, Cloud NAT, a nightly stop, then the machine; run again to start it
 make gcp.status   # state, and the tail of what the startup script said
 make gcp.ssh      # a shell there, over IAP
-NGC_API_KEY=… make gcp.ngc   # docker login to nvcr.io on the machine, key over ssh, never stored
+NGC_API_KEY=… make gcp.ngc   # the key into Secret Manager, the machine allowed to read it, and its Docker logged in to nvcr.io
 make gcp.tunnel   # localhost:3200 -> the machine's 3200
 make gcp.down     # stop; the disk stays. make gcp.delete takes it all away
 ```

@@ -5,7 +5,7 @@
 # starts a stopped machine and leaves the rest alone.
 source "$(dirname "$0")/env.sh"
 
-gcloud services enable compute.googleapis.com iap.googleapis.com --project "$PROJECT" >/dev/null
+gcloud services enable compute.googleapis.com iap.googleapis.com secretmanager.googleapis.com --project "$PROJECT" >/dev/null
 
 if ! gcloud compute firewall-rules describe "$TAG-iap" --project "$PROJECT" >/dev/null 2>&1; then
   echo "firewall: $TAG-iap (ssh and $PORT, from IAP only)"
@@ -66,6 +66,7 @@ case "$status" in
       --image-project "$IMAGE_PROJECT" \
       --boot-disk-size "${DISK_GB}GB" \
       --boot-disk-type pd-balanced \
+      --metadata "ngc-secret=$NGC_SECRET" \
       --metadata-from-file startup-script="$here/startup.sh" \
       --resource-policies "$TAG-stop" \
       --scopes cloud-platform \
