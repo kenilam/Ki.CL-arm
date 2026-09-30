@@ -10,7 +10,14 @@ LOCAL_PORT="${LOCAL_PORT:-3300}"
 
 echo "localhost:$LOCAL_PORT -> $NAME:$PORT ($BRIDGE, ctrl-c to close)"
 echo "in Ki.CL: KICL_ARM_BRIDGE_URL=http://localhost:$LOCAL_PORT"
-exec gcloud compute start-iap-tunnel "$NAME" "$PORT" \
-  --zone "$ZONE" \
-  --project "$PROJECT" \
-  --local-host-port "localhost:$LOCAL_PORT"
+# The bridge's port is closed for a minute while its container rebuilds, and the machine end of a tunnel
+# goes with it: rather than fail, wait and dial again, so a tunnel left running comes back on its own.
+while :; do
+  gcloud compute start-iap-tunnel "$NAME" "$PORT" \
+    --zone "$ZONE" \
+    --project "$PROJECT" \
+    --local-host-port "localhost:$LOCAL_PORT" && break
+
+  echo "no bridge on $NAME:$PORT yet; again in 5s (ctrl-c to stop)"
+  sleep 5
+done
