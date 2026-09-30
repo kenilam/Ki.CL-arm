@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!--
+  The arm as the controller knows it, for Isaac Sim. The joints are the
+  controller's own, by name and by sign, so a joint target goes to the
+  simulator as the controller computed it and a joint state comes back the
+  same way: yaw, shoulder, elbow, wrist, roll. Lengths are LINK in
+  client/src/model/constants.ts and bridge/controller/src/constants.rs;
+  change the three together.
+
+  Frames. The controller's arm frame is x across, y up, z out. URDF is z up,
+  so here X is the controller's z (out), Y its x (across), Z its y (up). Each
+  link's own X runs along the link.
+
+  Signs, from client/src/model/frames.ts: the shoulder pitches up from level
+  and the wrist with it, so both turn about -Y; the elbow bends down from
+  straight, so it turns about +Y; the pad rolls against the hand's axis, -X.
+-->
+<robot name="arm">
+  <material name="body"><color rgba="0.92 0.45 0.12 1"/></material>
+  <material name="dark"><color rgba="0.15 0.15 0.15 1"/></material>
+
+  <link name="base">
+    <inertial><origin xyz="0 0 0.1"/><mass value="400"/><inertia ixx="20" iyy="20" izz="20" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.1"/><geometry><box size="0.6 0.6 0.2"/></geometry><material name="dark"/></visual>
+    <collision><origin xyz="0 0 0.1"/><geometry><box size="0.6 0.6 0.2"/></geometry></collision>
+  </link>
+
+  <joint name="yaw" type="continuous">
+    <parent link="base"/><child link="turret"/>
+    <origin xyz="0 0 0.2"/><axis xyz="0 0 1"/>
+    <limit effort="20000" velocity="1.2"/>
+  </joint>
+
+  <link name="turret">
+    <inertial><origin xyz="0 0 0.26"/><mass value="120"/><inertia ixx="6" iyy="6" izz="4" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.26"/><geometry><cylinder radius="0.2" length="0.52"/></geometry><material name="body"/></visual>
+    <collision><origin xyz="0 0 0.26"/><geometry><cylinder radius="0.2" length="0.52"/></geometry></collision>
+  </link>
+
+  <!-- LINK.base: the shoulder's height off the floor. -->
+  <joint name="shoulder" type="revolute">
+    <parent link="turret"/><child link="upper"/>
+    <origin xyz="0 0 0.52"/><axis xyz="0 -1 0"/>
+    <limit lower="-1.6" upper="3.2" effort="20000" velocity="2"/>
+  </joint>
+
+  <!-- LINK.upper. It sits SIDE to one side of the turret, for the look; the chain itself is in one plane. -->
+  <link name="upper">
+    <inertial><origin xyz="0.625 0 0"/><mass value="60"/><inertia ixx="0.5" iyy="8" izz="8" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0.625 0.17 0"/><geometry><box size="1.25 0.17 0.2"/></geometry><material name="body"/></visual>
+    <collision><origin xyz="0.625 0.17 0"/><geometry><box size="1.25 0.17 0.2"/></geometry></collision>
+  </link>
+
+  <joint name="elbow" type="revolute">
+    <parent link="upper"/><child link="fore"/>
+    <origin xyz="1.25 0 0"/><axis xyz="0 1 0"/>
+    <limit lower="-0.2" upper="3.3" effort="20000" velocity="2"/>
+  </joint>
+
+  <!-- LINK.fore -->
+  <link name="fore">
+    <inertial><origin xyz="0.55 0 0"/><mass value="40"/><inertia ixx="0.3" iyy="4" izz="4" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0.55 0 0"/><geometry><box size="1.1 0.19 0.18"/></geometry><material name="body"/></visual>
+    <collision><origin xyz="0.55 0 0"/><geometry><box size="1.1 0.19 0.18"/></geometry></collision>
+  </link>
+
+  <joint name="wrist" type="revolute">
+    <parent link="fore"/><child link="hand"/>
+    <origin xyz="1.1 0 0"/><axis xyz="0 -1 0"/>
+    <limit lower="-4.0" upper="2.0" effort="20000" velocity="2"/>
+  </joint>
+
+  <link name="hand">
+    <inertial><mass value="5"/><inertia ixx="0.05" iyy="0.05" izz="0.05" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><geometry><sphere radius="0.09"/></geometry><material name="dark"/></visual>
+  </link>
+
+  <joint name="roll" type="continuous">
+    <parent link="hand"/><child link="gripper"/>
+    <origin xyz="0 0 0"/><axis xyz="-1 0 0"/>
+    <limit effort="5000" velocity="2"/>
+  </joint>
+
+  <!-- LINK.hand from the wrist to the face of the suction pad; GRIPPER width by depth. -->
+  <link name="gripper">
+    <inertial><origin xyz="0.25 0 0"/><mass value="10"/><inertia ixx="0.1" iyy="0.3" izz="0.3" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0.23 0 0"/><geometry><box size="0.46 0.1 0.1"/></geometry><material name="dark"/></visual>
+    <visual><origin xyz="0.48 0 0"/><geometry><box size="0.04 0.26 0.18"/></geometry><material name="dark"/></visual>
+    <collision><origin xyz="0.25 0 0"/><geometry><box size="0.5 0.26 0.18"/></geometry></collision>
+  </link>
+</robot>
