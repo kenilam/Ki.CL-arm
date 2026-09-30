@@ -37,6 +37,7 @@ case "$status" in
     ;;
   "")
     echo "creating $NAME: $MACHINE in $ZONE, ${DISK_GB}GB, $( [ "$SPOT" = 1 ] && echo spot || echo on-demand )"
+    # Expanded with the ${arr[@]+...} form: macOS bash treats an empty array as unbound under set -u.
     provisioning=()
     if [ "$SPOT" = 1 ]; then
       provisioning=(--provisioning-model SPOT --instance-termination-action STOP)
@@ -55,7 +56,7 @@ case "$status" in
       --metadata-from-file startup-script="$here/startup.sh" \
       --resource-policies "$TAG-stop" \
       --scopes cloud-platform \
-      "${provisioning[@]}" >/dev/null
+      ${provisioning[@]+"${provisioning[@]}"} >/dev/null
     echo "first boot installs the driver and reboots once; make gcp.status shows the serial log"
     ;;
   *)
