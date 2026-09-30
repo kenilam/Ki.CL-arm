@@ -142,7 +142,13 @@ impl Ros {
     }
 
     /// Tells `id`'s simulator what stands in its cell: cases and pallets as boxes in the arm's frame, as JSON.
-    pub fn cell(&self, id: &str, cases: &[arm_controller::Obstacle], pallets: &[arm_controller::Obstacle]) {
+    pub fn cell(
+        &self,
+        id: &str,
+        cases: &[arm_controller::Obstacle],
+        pallets: &[arm_controller::Obstacle],
+        belts: &[arm_controller::Obstacle],
+    ) {
         let publishers = self.publishers.lock().unwrap();
         let Some(out) = publishers.get(id) else {
             return;
@@ -158,7 +164,12 @@ impl Ros {
                 .collect::<Vec<_>>()
                 .join(",")
         };
-        let data = format!(r#"{{"cases":[{}],"pallets":[{}]}}"#, boxes(cases), boxes(pallets));
+        let data = format!(
+            r#"{{"cases":[{}],"pallets":[{}],"belts":[{}]}}"#,
+            boxes(cases),
+            boxes(pallets),
+            boxes(belts)
+        );
 
         if let Err(error) = out.cell.publish(&Text { data }) {
             warn!(arm = id, %error, "could not publish the cell");

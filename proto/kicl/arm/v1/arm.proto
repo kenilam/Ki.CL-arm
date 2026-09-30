@@ -149,6 +149,8 @@ message Scene {
   repeated Box boxes = 2;
   repeated Box cases = 3;
   repeated Box pallets = 4;
+  // The belt under each spot in the cell a case stands on: where this arm picks and where it drops.
+  repeated Box belts = 5;
 }
 
 // Everything that goes from the hub to the arms.

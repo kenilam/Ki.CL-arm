@@ -13,7 +13,12 @@ import type { Report } from './reports';
  * `pallets` are what stands in its cell, for a simulator that stages the
  * cell as physics. A real arm sees the world itself.
  */
-type Feed = (boxes: Box[], cases?: Box[], pallets?: Box[]) => void;
+type Feed = (
+  boxes: Box[],
+  cases?: Box[],
+  pallets?: Box[],
+  belts?: Box[]
+) => void;
 
 type Link = {
   arm: string;

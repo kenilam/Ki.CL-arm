@@ -184,6 +184,7 @@ class Cell:
         self.root = f"/World/{topic}_cell"
         self.cases: dict[str, str] = {}
         self.pallets: dict[str, str] = {}
+        self.belts: dict[str, str] = {}
         self.held: str | None = None
         self.joint = f"{self.root}/vacuum"
         stage.DefinePrim(self.root, "Xform")
@@ -228,6 +229,11 @@ class Cell:
                 path = f"{self.root}/{Sdf.Path.IsValidIdentifier(pallet['id']) and pallet['id'] or 'p_' + str(len(self.pallets))}"
                 self.pallets[pallet["id"]] = self.box(path, pallet, rigid=False, colour=Gf.Vec3f(0.55, 0.4, 0.2))
 
+        for belt in cell.get("belts", []):
+            if belt["id"] not in self.belts:
+                path = f"{self.root}/belt_{len(self.belts)}"
+                self.belts[belt["id"]] = self.box(path, belt, rigid=False, colour=Gf.Vec3f(0.15, 0.15, 0.15))
+
         for case_id, one in wanted.items():
             if case_id not in self.cases:
                 path = f"{self.root}/case_{len(self.cases)}"
@@ -237,7 +243,7 @@ class Cell:
             if case_id not in wanted and case_id != self.held:
                 stage.RemovePrim(self.cases.pop(case_id))
 
-        print(f"scene: {self.arm} cell has {len(self.cases)} cases on {len(self.pallets)} pallets")
+        print(f"scene: {self.arm} cell has {len(self.cases)} cases, {len(self.pallets)} pallets, {len(self.belts)} belt pads")
 
     def under_pad(self) -> str | None:
         """The case whose top is just under the pad's face, if one is."""

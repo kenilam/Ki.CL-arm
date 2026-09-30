@@ -20,6 +20,7 @@ import {
   line as geometry,
   type Line as Geometry,
   on,
+  onBelt,
   reaches,
   stretch,
   PALLET,
@@ -296,6 +297,28 @@ const create = ({
       },
     }));
 
+  /**
+   * The belt under each spot in the arm's cell where a case stands on it: the pick zone at the end of a
+   * line, and this arm's drops. A square of the belt's width there, its top at the belt's height. The
+   * whole run is not sent: a straight belt on a slant would be a box across half the cell.
+   */
+  const belts = ({ belts: lines }: Layout): Box[] =>
+    lines.flatMap((belt) =>
+      [
+        ...(belt.end ? [['pick', belt.pick]] : []),
+        ...belt.drops.map((at, index) => [`drop-${index}`, at]),
+      ].map(([name, distance]) => {
+        const { x, z } = onBelt(belt, distance as number);
+        const half = belt.width / 2;
+
+        return {
+          id: `belt:${belt.id}:${name}`,
+          min: { x: x - half, y: belt.height - DECK, z: z - half },
+          max: { x: x + half, y: belt.height, z: z + half },
+        };
+      })
+    );
+
   /** The obstacles standing on a line's belt. */
   const blocking = (found: Geometry) =>
     blocks.filter((box) => covers(found, box));
@@ -325,7 +348,13 @@ const create = ({
       ...extent(one),
     }));
 
-    feed(arm, shifted(found.hex), cases, pallets(found.layout));
+    feed(
+      arm,
+      shifted(found.hex),
+      cases,
+      pallets(found.layout),
+      belts(found.layout)
+    );
     found.wake();
   };
 
@@ -512,7 +541,8 @@ const create = ({
             one.id,
             shifted(hex),
             event.cases.map((one) => ({ id: one.id, ...extent(one) })),
-            pallets(one.layout)
+            pallets(one.layout),
+            belts(one.layout)
           );
         }
 
