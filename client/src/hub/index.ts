@@ -1,6 +1,7 @@
 export { open, type Console } from './console';
 export type { Inbound, Outbound } from './worker';
 export type { Board, Capacity, Target } from './board';
+export type { Floor } from './floor';
 export {
   create,
   type Cell,

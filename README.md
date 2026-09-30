@@ -5,7 +5,7 @@ The wire between the [Ki.CL](https://github.com/kenilam/Ki.CL) factory-arm hub a
 Three things live here:
 
 - `proto/`: the schema for the wire, `kicl/arm/v1/arm.proto`.
-- `client/`: the arm's business logic with no React in it (protocol, model, grid, controller, station, hub, and the floor's placement rules), built as a Module Federation remote named `arm`. Ki.CL imports it as `arm/hub`, `arm/floor` and so on, the way it imports Ki.CL-back's GraphQL client as `api`.
+- `client/`: the arm package (protocol, model, grid, controller, station, hub), built as a Module Federation remote named `arm`. It knows nothing about any page: a host hands the hub a `Floor`, plain data with the arms, belt lines, pallets, capacities and obstacles, and the hub builds itself from it. Ki.CL imports it as `arm/hub`, `arm/grid/hex` and so on, the way it imports Ki.CL-back's GraphQL client as `api`. What a page does with it, such as its preset floors, its editor's placement rules and how it draws the arm, stays in the page.
 - `server/`: the development server. It serves the built remote at `/arm/*` and runs the simulated controllers behind the wire at `/arm/link`.
 
 ```bash
@@ -48,7 +48,7 @@ Ki.CL gets its types for `arm/*` from the remote's `@mf-types.zip`, pulled by th
 ## Plan
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
-2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps only the React floor. Workers load through Ki.CL's `/arm` proxy.
+2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps the floor page and everything only a page needs. Workers load through Ki.CL's `/arm` proxy.
 3. **GCP.** One `g2-standard-8` with an L4, no public IP, Isaac Sim and Isaac ROS containers, reached over an IAP tunnel. `make gcp.up`, `gcp.down`, `gcp.tunnel`. Tailscale on the VM for the Isaac Sim viewport, since WebRTC needs UDP and IAP is TCP only.
 4. **Bridge, C++.** An `rclcpp` node with a WebSocket server, speaking this schema. Each `move` becomes a cuMotion goal through MoveIt, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop. `/joint_states` comes back as `Telemetry`. `client/src/controller/run.ts` is the spec for its behaviour.
 5. **Sim content.** The arm as a URDF from the link lengths in `client/src/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.

@@ -34,7 +34,6 @@ export default defineConfig({
         './station/events': './src/station/events.ts',
         './station/spec': './src/station/spec.ts',
         './hub': './src/hub/index.ts',
-        './floor': './src/floor/index.ts',
       },
       dts: {
         generateTypes: {
