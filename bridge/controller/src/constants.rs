@@ -78,6 +78,7 @@ pub const STALLED: f64 = 0.5;
 /// How little the physical joints may move over `STALLED`, in radians, and still count as stopped.
 pub const STILL: f64 = 0.002;
 
-/// How close stopped joints must be to the goal, in radians, for the stop to count as arrival: a pad pressed onto
-/// a case top, or a joint at the end of its give, comes no closer however long it tries.
-pub const BLOCKED: f64 = 0.1;
+/// How close a stopped pad must be to where the goal would put it, in metres, for the stop to count as arrival: a
+/// pad pressed onto a case top comes no closer however long it tries. Measured at the pad, not the joints: small
+/// joint errors add up to a pad far from a case, and a vacuum switched on there takes nothing.
+pub const BLOCKED: f64 = 0.05;
