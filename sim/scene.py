@@ -166,18 +166,40 @@ class Cell:
     hub's side while a case travels. The vacuum is a fixed joint between the pad and whatever case is under it.
     """
 
-    def __init__(self, node, arm: str, topic: str, base: Gf.Vec3d, pad: str):
+    def __init__(self, node, arm: str, topic: str, base: Gf.Vec3d, under: str):
         self.arm = arm
         self.base = base
-        self.pad = pad
+        # The importer nests the links its own way; the gripper is the rigid body of that name under the arm.
+        self.pad = next(
+            (
+                str(prim.GetPath())
+                for prim in stage.Traverse()
+                if str(prim.GetPath()).startswith(under)
+                and prim.GetName() == "gripper"
+                and prim.HasAPI(UsdPhysics.RigidBodyAPI)
+            ),
+            None,
+        )
+        print(f"scene: {arm} pad link {self.pad}")
         self.root = f"/World/{topic}_cell"
         self.cases: dict[str, str] = {}
         self.pallets: dict[str, str] = {}
         self.held: str | None = None
         self.joint = f"{self.root}/vacuum"
         stage.DefinePrim(self.root, "Xform")
-        node.create_subscription(String, f"/{topic}/cell", self.on_cell, 10)
-        node.create_subscription(Bool, f"/{topic}/vacuum", self.on_vacuum, 10)
+        node.create_subscription(String, f"/{topic}/cell", self.guarded(self.on_cell), 10)
+        node.create_subscription(Bool, f"/{topic}/vacuum", self.guarded(self.on_vacuum), 10)
+
+    def guarded(self, handler):
+        """A callback whose failure is a log line, not the end of the simulator."""
+
+        def call(message):
+            try:
+                handler(message)
+            except Exception as error:  # noqa: BLE001
+                print(f"scene: {self.arm} {handler.__name__} failed: {error!r}")
+
+        return call
 
     def box(self, path: str, one: dict, rigid: bool, colour) -> str:
         lo, hi = to_sim(one["min"]), to_sim(one["max"])
@@ -236,6 +258,9 @@ class Cell:
         return best[0] if best else None
 
     def on_vacuum(self, message: Bool) -> None:
+        if self.pad is None:
+            return
+
         if message.data and self.held is None:
             case_id = self.under_pad()
 
@@ -278,7 +303,7 @@ for index, arm in enumerate(arms):
     root = articulation(path)
 
     wire(topic, root, clock=index == 0)
-    cells.append(Cell(ros, arm, topic, Gf.Vec3d(0, index * args.spacing, 0), f"{path}/gripper"))
+    cells.append(Cell(ros, arm, topic, Gf.Vec3d(0, index * args.spacing, 0), path))
     print(f"scene: {arm} at {root}, on /{topic}/joint_states and /{topic}/joint_commands, cell on /{topic}/cell")
 
 simulation_app.update()

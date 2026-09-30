@@ -368,6 +368,9 @@ const create = ({
     station.homing = true;
   };
 
+  /** Greets the arm again over the link it has: for an arm that restarted while the hub ran on. */
+  const wake = () => greet();
+
   /**
    * Puts the arm on `to` instead of the link it has now. Not straight away:
    * an arm mid-move with a case on the pad has state the arm on the other
@@ -712,6 +715,7 @@ const create = ({
     relink,
     snapshot,
     tick,
+    wake,
   };
 };
 

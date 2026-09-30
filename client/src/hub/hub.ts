@@ -312,6 +312,23 @@ const create = ({
     found.relink(to);
   };
 
+  /** Greets `arm` again, as at load: its scene, then stop, reset and rest. For an arm that restarted under a running hub. */
+  const wake = (arm: string) => {
+    const found = [...stations.values()].find(({ id }) => id === arm);
+
+    if (!found) {
+      return;
+    }
+
+    const cases = Object.values(found.snapshot().cases).map((one) => ({
+      id: one.id,
+      ...extent(one),
+    }));
+
+    feed(arm, shifted(found.hex), cases, pallets(found.layout));
+    found.wake();
+  };
+
   const load = (hex: Hex) => {
     const found = stations.get(index(hex));
 
@@ -564,6 +581,7 @@ const create = ({
     plan,
     relink,
     remove,
+    wake,
     ride,
     tick,
   };
