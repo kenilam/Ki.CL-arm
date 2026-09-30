@@ -278,6 +278,15 @@ const encodeReport = (report: Report) => {
             step: report.step,
           }),
         };
+      case 'seen':
+        return {
+          case: 'seen',
+          value: create(Pb.Report_SeenSchema, {
+            cases: report.cases,
+            others: report.others,
+            held: report.held ?? undefined,
+          }),
+        };
       case 'held':
         return {
           case: 'held',
@@ -338,6 +347,14 @@ const decodeReport = (bytes: Uint8Array): Report => {
         arm,
         revision: type.value.revision,
         step: type.value.step,
+      };
+    case 'seen':
+      return {
+        type: 'seen',
+        arm,
+        cases: type.value.cases.map(box),
+        others: type.value.others.map(box),
+        held: type.value.held ?? null,
       };
     case 'held':
       return {

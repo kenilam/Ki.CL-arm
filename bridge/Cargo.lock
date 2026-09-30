@@ -77,6 +77,8 @@ dependencies = [
  "futures-util",
  "prost",
  "r2r",
+ "serde",
+ "serde_json",
  "tokio",
  "tokio-tungstenite",
  "tracing",

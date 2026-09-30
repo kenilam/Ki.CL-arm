@@ -219,6 +219,15 @@ message Report {
 
   message Reset {}
 
+  // What the arm's perception sees in its cell, in the arm's frame: each case as a box by its id, whatever
+  // else stands there, and the case on the pad. From the simulator's physics today; from cameras later, on
+  // this same message.
+  message Seen {
+    repeated Box cases = 1;
+    repeated Box others = 2;
+    optional string held = 3;
+  }
+
   string arm = 1;
 
   oneof type {
@@ -231,5 +240,6 @@ message Report {
     Resumed resumed = 8;
     Stopped stopped = 9;
     Reset reset = 10;
+    Seen seen = 11;
   }
 }

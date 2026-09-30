@@ -49,6 +49,8 @@ type Station = {
   catalogue: Box[];
   /** Obstacles the arm's sensors have found. The overhead camera's are worked out as needed. */
   sensed: Set<string>;
+  /** Cases perception has seen standing well away from where the station had them, so it is said once each. */
+  strayed: Set<string>;
   /** What rides the belts past here, as the hub last said, distances from this arm. */
   riders: Map<string, Rider>;
   /** The belts past here that are running, as the hub last said. */
@@ -102,6 +104,7 @@ const boot = (id: string, layout: Layout, link: Link): Station => ({
   cases: {},
   catalogue: [],
   sensed: new Set(),
+  strayed: new Set(),
   riders: new Map(),
   moving: new Set(),
   queue: [],

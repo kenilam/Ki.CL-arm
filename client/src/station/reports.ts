@@ -9,7 +9,7 @@ import { alongBelt } from '../grid/layout';
 
 // Partials
 import { cancel, retry } from './jobs';
-import { RESEND } from './constants';
+import { DRIFT, RESEND, STRAYED } from './constants';
 import { label, note, say, send, show, type Station, world } from './state';
 import { place, remove } from './world';
 
@@ -56,6 +56,8 @@ const handle = (station: Station, report: Report) => {
       }
 
       return;
+    case 'seen':
+      return observe(station, report);
     case 'held':
       if (report.cause === 'sensor') {
         report.seen.forEach((id) => station.sensed.add(id));
@@ -110,6 +112,65 @@ const reconcile = (station: Station) => {
   }
 
   show(station);
+};
+
+/**
+ * Perception's picture of the cell beats the station's: a case seen away
+ * from where the station had it is moved there, so the next plan starts
+ * from where things are. Said in the log when it has strayed far, once.
+ * Cases seen that the station has no record of are left to the sensors.
+ */
+const observe = (
+  station: Station,
+  { cases, held }: Extract<Report, { type: 'seen' }>
+) => {
+  let moved = false;
+
+  cases.forEach(({ id, min, max }) => {
+    const own = station.cases[id];
+
+    if (!own) {
+      return;
+    }
+
+    const at = {
+      x: (min.x + max.x) / 2,
+      y: (min.y + max.y) / 2,
+      z: (min.z + max.z) / 2,
+    };
+    const far = Math.hypot(at.x - own.at.x, at.y - own.at.y, at.z - own.at.z);
+
+    if (far < DRIFT) {
+      return;
+    }
+
+    if (far > STRAYED && !station.strayed.has(id)) {
+      station.strayed.add(id);
+      note(
+        station,
+        `${label(id)} strayed`,
+        'warning',
+        `${Math.round(far * 100)} cm from its place`
+      );
+    }
+
+    own.at = at;
+    moved = true;
+  });
+
+  if (held && held !== station.holding?.id && !station.strayed.has(held)) {
+    station.strayed.add(held);
+    note(
+      station,
+      `pad holds ${label(held)}`,
+      'warning',
+      'not the case planned'
+    );
+  }
+
+  if (moved) {
+    show(station);
+  }
 };
 
 /** One instruction done: a pick or place moves a case in the cell. */

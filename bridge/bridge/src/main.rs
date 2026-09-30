@@ -147,6 +147,10 @@ async fn servo_loop(arms: Shared, reports: broadcast::Sender<Vec<u8>>, ros: Ros)
 
             let mut out = controller.drain();
 
+            if let Some(seen) = perceive(&id, &ros) {
+                out.push(seen);
+            }
+
             if telemetry {
                 out.push(arm_controller::Report::Telemetry(telemetry_of(&id, controller, &ros)));
             }
@@ -169,6 +173,34 @@ fn observe(id: &str, controller: &mut Controller, ros: &Ros) {
 
 #[cfg(not(feature = "ros2"))]
 fn observe(_id: &str, _controller: &mut Controller, _ros: &Ros) {}
+
+/// What perception has seen in `id`'s cell since last asked, as a report for the hub.
+#[cfg(feature = "ros2")]
+fn perceive(id: &str, ros: &Ros) -> Option<arm_controller::Report> {
+    use arm_controller::{Obstacle, Point};
+
+    let seen = ros.as_ref()?.seen(id)?;
+    let boxes = |list: Vec<ros::SeenBox>| {
+        list.into_iter()
+            .map(|one| Obstacle {
+                id: one.id,
+                min: Point { x: one.min[0], y: one.min[1], z: one.min[2] },
+                max: Point { x: one.max[0], y: one.max[1], z: one.max[2] },
+            })
+            .collect()
+    };
+
+    Some(arm_controller::Report::Seen {
+        cases: boxes(seen.cases),
+        others: boxes(seen.others),
+        held: seen.held,
+    })
+}
+
+#[cfg(not(feature = "ros2"))]
+fn perceive(_id: &str, _ros: &Ros) -> Option<arm_controller::Report> {
+    None
+}
 
 /// The arm's telemetry. Over ROS the controller's joints go out as the targets, and what the physics did is what the hub is told.
 #[cfg(feature = "ros2")]

@@ -56,6 +56,15 @@ const COMMANDS: Command[] = [
 
 const REPORTS: Report[] = [
   {
+    type: 'seen',
+    arm: ARM,
+    cases: [
+      { id: 'c1', min: { x: 0, y: 0, z: 1 }, max: { x: 0.4, y: 0.3, z: 1.4 } },
+    ],
+    others: [],
+    held: 'c2',
+  },
+  {
     type: 'telemetry',
     arm: ARM,
     at: 12.5,

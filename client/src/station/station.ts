@@ -450,6 +450,7 @@ const create = ({
     station.cases = {};
     station.catalogue = catalogue;
     station.sensed.clear();
+    station.strayed.clear();
     station.riders.clear();
     station.moving.clear();
     station.queue = [];
