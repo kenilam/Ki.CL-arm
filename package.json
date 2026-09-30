@@ -2,14 +2,23 @@
   "name": "kicl-arm",
   "version": "0.0.1",
   "private": true,
-  "description": "The wire between the Ki.CL factory-arm hub and its arms, and the bridge that puts an arm on the far end of it.",
+  "description": "The Ki.CL factory-arm business logic as a federated remote, the wire between its hub and its arms, and the bridge on the far end of it.",
   "engines": {
     "node": ">=24"
   },
+  "workspaces": [
+    "client"
+  ],
   "scripts": {
-    "lint": "buf lint",
     "breaking": "buf breaking --against '.git#branch=main'",
-    "format": "buf format -w"
+    "build": "yarn workspace @ki-cl/arm run build",
+    "codegen": "buf generate",
+    "development": "concurrently -k -n client,server \"yarn workspace @ki-cl/arm run dev\" \"tsx watch server/index.ts\"",
+    "format": "buf format -w",
+    "lint": "buf lint",
+    "serve": "tsx server/index.ts",
+    "test": "yarn workspace @ki-cl/arm run test",
+    "typecheck": "yarn workspace @ki-cl/arm run typecheck"
   },
   "repository": {
     "type": "git",
@@ -17,8 +26,20 @@
   },
   "author": "hello@ki-cl.com",
   "license": "ISC",
+  "dependencies": {
+    "cors": "2.8.5",
+    "express": "5.1.0",
+    "ws": "8.22.0"
+  },
   "devDependencies": {
-    "@bufbuild/buf": "1.66.0"
+    "@bufbuild/buf": "1.66.0",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.3",
+    "@types/node": "26",
+    "@types/ws": "8.18.1",
+    "concurrently": "9.2.1",
+    "tsx": "4.23.15",
+    "typescript": "7"
   },
   "packageManager": "yarn@4.17.1"
 }

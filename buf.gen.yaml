@@ -1,0 +1,10 @@
+# TypeScript for the wire, into the client. `make codegen`.
+version: v2
+inputs:
+  - directory: proto
+plugins:
+  - remote: buf.build/bufbuild/es
+    out: client/src/protocol/wire/gen
+    opt:
+      - target=ts
+    include_imports: false

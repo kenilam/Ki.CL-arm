@@ -2,17 +2,26 @@
 
 The wire between the [Ki.CL](https://github.com/kenilam/Ki.CL) factory-arm hub and its arms, and, in time, the bridge that puts a real or NVIDIA Isaac arm on the far end of it.
 
-Today the repo holds the schema. The hub, the stations, the simulated controller and the browser floor still live in Ki.CL under `App/views/experiments/factory-arm`. The plan below moves the arm-side code here.
+Three things live here:
+
+- `proto/`: the schema for the wire, `kicl/arm/v1/arm.proto`.
+- `client/`: the arm's business logic with no React in it (protocol, model, grid, controller, station, hub, and the floor's placement rules), built as a Module Federation remote named `arm`. Ki.CL imports it as `arm/hub`, `arm/floor` and so on, the way it imports Ki.CL-back's GraphQL client as `api`.
+- `server/`: the development server. It serves the built remote at `/arm/*` and runs the simulated controllers behind the wire at `/arm/link`.
 
 ```bash
-yarn            # installs buf
-yarn lint       # buf lint
-yarn breaking   # against main
+make install
+make run        # rebuilds the remote as it changes, serves it and the simulated arms on :3200
+make test       # 49 node:test suites across the client
+make typecheck
+make codegen    # TypeScript for the wire from proto/
+make lint       # buf lint
 ```
+
+Ki.CL's dev server proxies `/arm` to `http://localhost:3200` (`KICL_ARM_URL`), so run `make run` here beside `make run` there. The proxy is not a convenience: the hub and each controller run in workers, and a worker script has to load from the page's own origin.
 
 ## The wire
 
-`proto/kicl/arm/v1/arm.proto` mirrors `cell/protocol` in Ki.CL. Change the two together.
+`proto/kicl/arm/v1/arm.proto` mirrors `client/src/protocol`. Change the two together.
 
 One WebSocket carries every arm. Each frame is one protobuf message, no length prefix, because the socket already delimits frames.
 
@@ -25,23 +34,23 @@ Why WebSocket and protobuf rather than gRPC or GraphQL: a browser cannot speak n
 
 ## Consumers
 
-Ki.CL generates TypeScript from this schema with `make codegen` (`buf generate` with a remote `protoc-gen-es` plugin, so nothing to install). It reads the schema from this repo on GitHub, or from a checkout beside it with `make codegen ARM_PROTO=../Ki.CL-arm/proto`. The generated file is committed there.
+`make codegen` writes the TypeScript for the wire into `client/src/protocol/wire/gen` with a remote `protoc-gen-es` plugin, so nothing to install. The generated file is committed. The C++ bridge will generate its own from the same file when it arrives here.
 
-The C++ bridge will generate its own from the same file when it arrives here.
+Ki.CL gets its types for `arm/*` from the remote's `@mf-types.zip`, pulled by the Module Federation plugin at dev start into `App/@mf-types/arm`.
 
-## What is in Ki.CL today
+## The arm side of the wire, today
 
-- `cell/protocol/wire`: the codec between the hub's TypeScript types and the wire.
-- `cell/controller/remote.ts`: the hub's `Link` over a socket. One socket, one link per arm. Commands queue while the socket is down and only the last scene per arm is kept.
-- `cell/controller/serve.ts`: the simulated controller behind the wire as a Node process, `make arm.serve`. It is what the floor dials when there is no bridge yet, and the reference for what the bridge has to do.
-- The floor reads `KICL_ARM_LINK` (for example `ws://localhost:8765`) and shows a Physical AI button in its panel. On, the arms are on the bridge at that address. Off, they run in workers on the page.
+- `client/src/protocol/wire`: the codec between the hub's TypeScript types and the wire.
+- `client/src/controller/remote.ts`: the hub's `Link` over a socket. One socket, one link per arm. It takes a path such as `/arm/link` on the page's own origin, or a full `ws://` address. Commands queue while the socket is down and only the last scene per arm is kept.
+- `server/index.ts`: the simulated controller behind the wire, and the reference for what the bridge has to do. An arm keeps running when a hub goes away, so its telemetry carries the last plan revision it accepted and a new hub numbers its plans after it.
+- Ki.CL's floor reads `KICL_ARM_LINK` (for example `/arm/link`) and shows a Physical AI button in its panel. On, the arms are on the socket. Off, they run in workers on the page.
 
 ## Plan
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
-2. **Move the arm code here and federate it.** Everything under `cell/` in Ki.CL is business logic with no React in it: protocol, model, grid, controller, station, hub. It moves here and is served as a Module Federation remote named `arm`, the same way Ki.CL-back serves its GraphQL client as the `api` remote. Ki.CL keeps the floor (the React scene and panel) and imports the hub from `arm/hub`. The one thing to prove first is workers: the hub and each controller run in workers, and a worker script must load same-origin, so Ki.CL proxies the remote under its own origin as it already does for `/client`.
+2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps only the React floor. Workers load through Ki.CL's `/arm` proxy.
 3. **GCP.** One `g2-standard-8` with an L4, no public IP, Isaac Sim and Isaac ROS containers, reached over an IAP tunnel. `make gcp.up`, `gcp.down`, `gcp.tunnel`. Tailscale on the VM for the Isaac Sim viewport, since WebRTC needs UDP and IAP is TCP only.
-4. **Bridge, C++.** An `rclcpp` node with a WebSocket server, speaking this schema. Each `move` becomes a cuMotion goal through MoveIt, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop. `/joint_states` comes back as `Telemetry`. `cell/controller/run.ts` in Ki.CL is the spec for its behaviour.
-5. **Sim content.** The arm as a URDF from the link lengths in `cell/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.
+4. **Bridge, C++.** An `rclcpp` node with a WebSocket server, speaking this schema. Each `move` becomes a cuMotion goal through MoveIt, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop. `/joint_states` comes back as `Telemetry`. `client/src/controller/run.ts` is the spec for its behaviour.
+5. **Sim content.** The arm as a URDF from the link lengths in `client/src/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.
 6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.
 7. **Later.** A real arm behind the same bridge, and an Isaac Lab policy proposing placements that the station's stability check still has the last word on.
