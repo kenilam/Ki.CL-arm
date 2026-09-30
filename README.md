@@ -68,7 +68,7 @@ With the tunnel open, Ki.CL needs no change: its `/arm` proxy already points at 
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
 2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps the floor page and everything only a page needs. Workers load through Ki.CL's `/arm` proxy.
-3. **GCP.** Scripts done, above. Next: quota granted, the machine up, Isaac Sim and Isaac ROS containers pulled and a stock arm running headless.
+3. **GCP.** Done: the machine is up in `us-central1-c` with Isaac Sim 6.0.0 pulled. Next: a stock arm running headless in it, and the Isaac ROS containers.
 4. **Bridge, C++.** An `rclcpp` node with a WebSocket server, speaking this schema. Each `move` becomes a cuMotion goal through MoveIt, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop. `/joint_states` comes back as `Telemetry`. `client/src/controller/run.ts` is the spec for its behaviour.
 5. **Sim content.** The arm as a URDF from the link lengths in `client/src/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.
 6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.
