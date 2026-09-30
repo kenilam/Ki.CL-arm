@@ -42,6 +42,7 @@ import omni.usd  # noqa: E402
 import usdrt.Sdf  # noqa: E402
 from isaacsim.asset.importer.urdf.impl import URDFImporter, URDFImporterConfig  # noqa: E402
 from isaacsim.core.simulation_manager import SimulationManager  # noqa: E402
+from omni.physx.scripts import physicsUtils  # noqa: E402
 from pxr import Gf, Sdf, UsdGeom, UsdPhysics  # noqa: E402
 
 app_utils.enable_extension("isaacsim.ros2.bridge")
@@ -78,6 +79,8 @@ if not usd:
 print(f"scene: arm at {usd}")
 stage_utils.set_stage_units(meters_per_unit=1.0)
 stage = omni.usd.get_context().get_stage()
+# A floor, so a case that misses its pallet lands instead of falling for ever.
+physicsUtils.add_ground_plane(stage, "/World/ground", "Z", 50.0, Gf.Vec3f(0.0), Gf.Vec3f(0.5))
 
 
 def articulation(under: str) -> str:
