@@ -75,8 +75,8 @@ pub const FOLLOWED: f64 = 0.02;
 /// How long the physical joints must go without moving, in seconds, to count as stopped short of the goal.
 pub const STALLED: f64 = 0.5;
 
-/// How little the physical joints may move over `STALLED`, in radians, and still count as stopped.
-pub const STILL: f64 = 0.002;
+/// How little the physical pad may move over `STALLED`, in metres, and still count as stopped.
+pub const STILL: f64 = 0.005;
 
 /// How close a stopped pad must be to where the goal would put it, in metres, for the stop to count as arrival: a
 /// pad pressed onto a case top comes no closer however long it tries. Measured at the pad, not the joints: small

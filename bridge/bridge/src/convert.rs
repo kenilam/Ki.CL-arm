@@ -60,6 +60,21 @@ pub fn command(from: wire::Command) -> Option<ctl::Command> {
         Type::Stop(_) => ctl::Command::Stop { arm },
         Type::Reset(_) => ctl::Command::Reset { arm },
         Type::Open(o) => ctl::Command::Open { arm, gate: o.gate },
+        Type::Seed(s) => {
+            let j = s.joints?;
+
+            ctl::Command::Seed {
+                arm,
+                joints: ctl::Joints {
+                    yaw: j.yaw,
+                    shoulder: j.shoulder,
+                    elbow: j.elbow,
+                    wrist: j.wrist,
+                    roll: j.roll,
+                    grip: j.grip,
+                },
+            }
+        }
     })
 }
 

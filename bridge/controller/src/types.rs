@@ -72,6 +72,7 @@ pub enum Command {
     Stop { arm: String },
     Reset { arm: String },
     Open { arm: String, gate: String },
+    Seed { arm: String, joints: Joints },
 }
 
 impl Command {
@@ -82,7 +83,8 @@ impl Command {
             | Command::Resume { arm }
             | Command::Stop { arm }
             | Command::Reset { arm }
-            | Command::Open { arm, .. } => arm,
+            | Command::Open { arm, .. }
+            | Command::Seed { arm, .. } => arm,
         }
     }
 }

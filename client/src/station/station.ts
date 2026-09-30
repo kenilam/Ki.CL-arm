@@ -369,6 +369,8 @@ const create = ({
    * the arm's own telemetry, so a swing home and back would only be a show.
    */
   const relink = (to: Link) => {
+    const stood = station.telemetry?.joints;
+
     unlisten();
     station.link.close();
     station.link = to;
@@ -390,6 +392,12 @@ const create = ({
 
     greet();
     station.homing = false;
+
+    // The new arm stands where the old one did, so the picture does not jump and its first plan starts from there.
+    if (stood) {
+      station.link.send({ type: 'seed', arm: id, joints: stood });
+    }
+
     show(station);
   };
 
