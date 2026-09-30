@@ -323,7 +323,7 @@ const create = ({
   const blocking = (found: Geometry) =>
     blocks.filter((box) => covers(found, box));
 
-  /** Puts `arm` on `to` instead of the link it has now, at its next moment between jobs. The new arm hears of the cell's obstacles first. */
+  /** Puts `arm` on `to` instead of the link it has now, at once. The new arm hears of the cell's obstacles first. */
   const relink = (arm: string, to: Link) => {
     const found = [...stations.values()].find(({ id }) => id === arm);
 
