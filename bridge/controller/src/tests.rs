@@ -197,3 +197,51 @@ fn solve_and_forward_agree() {
 
     assert!(far(&back, &target) < 1e-9, "joints {joints:?} back {back:?}");
 }
+
+/// A beam below the pad at rest, well inside the gripper sensor's half metre.
+fn beam() -> Obstacle {
+    Obstacle {
+        id: "beam".into(),
+        min: Point { x: REST.x - 0.1, y: REST.y - 0.6, z: REST.z - 0.1 },
+        max: Point { x: REST.x + 0.1, y: REST.y - 0.4, z: REST.z + 0.1 },
+    }
+}
+
+#[test]
+fn a_sensor_holds_the_arm_for_an_obstacle_the_plan_did_not_know_of() {
+    let mut controller = Controller::new(ARM);
+
+    controller.feed(vec![beam()]);
+    controller.command(planned(vec![swing(Point { x: REST.x, y: REST.y - 0.3, z: REST.z })], 1, None));
+
+    let reports = run(&mut controller, 5.0);
+    let held = reports.iter().find_map(|report| match report {
+        Report::Held { cause, seen } => Some((*cause, seen.clone())),
+        _ => None,
+    });
+
+    assert_eq!(held, Some((Cause::Sensor, vec!["beam".to_owned()])));
+    assert_eq!(controller.telemetry().state, State::Held);
+}
+
+#[test]
+fn a_known_obstacle_does_not_hold_the_arm() {
+    let mut controller = Controller::new(ARM);
+
+    controller.feed(vec![beam()]);
+    controller.command(Command::Load {
+        arm: ARM.into(),
+        plan: Plan {
+            arm: ARM.into(),
+            revision: 1,
+            holding: None,
+            known: vec!["beam".into()],
+            instructions: vec![swing(Point { x: REST.x, y: REST.y - 0.3, z: REST.z })],
+        },
+    });
+
+    let reports = run(&mut controller, 5.0);
+
+    assert!(!kinds(&reports).contains(&"held"), "{:?}", kinds(&reports));
+    assert!(kinds(&reports).contains(&"done"));
+}

@@ -11,6 +11,9 @@ pub struct Link {
 
 pub const LINK: Link = Link { base: 0.72, upper: 1.25, fore: 1.1, hand: 0.5 };
 
+/// The upper arm sits this far to the side of the turret, along the pitch axis.
+pub const SIDE: f64 = 0.17;
+
 /// Limits on where the pad can be sent: `min` keeps the gripper clear of the turret, `floor` above the table, and `slack` stops the arm locking straight.
 pub struct Reach {
     pub floor: f64,
