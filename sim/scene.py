@@ -161,6 +161,66 @@ def to_sim(point):
     return Gf.Vec3d(z, x, y)
 
 
+def from_sim(point) -> list[float]:
+    """The way back: a stage point as the controller's [x, y, z]."""
+    return [float(point[1]), float(point[2]), float(point[0])]
+
+
+def camera(topic: str, base: Gf.Vec3d) -> None:
+    """A camera over the cell looking down, its colour and depth on ROS 2, for perception to work from.
+
+    The simulator's own account of the cell goes out on `/<arm>/seen` regardless; this is what a perception
+    stack (FoundationPose for the cases, nvblox for everything else) will read to say the same thing.
+    """
+    path = f"/World/{topic}_camera"
+    prim = UsdGeom.Camera.Define(stage, path)
+    api = UsdGeom.XformCommonAPI(prim)
+
+    # Above the cell, looking straight down: a USD camera looks along its own -Z, and the stage is Z up.
+    api.SetTranslate(base + Gf.Vec3d(0, 0, 4.5))
+    prim.GetFocalLengthAttr().Set(12.0)
+    prim.GetClippingRangeAttr().Set(Gf.Vec2f(0.1, 20.0))
+
+    og.Controller.edit(
+        {"graph_path": f"/Graphs/{topic}_camera", "evaluator_name": "execution"},
+        {
+            og.Controller.Keys.CREATE_NODES: [
+                ("OnPlaybackTick", "omni.graph.action.OnPlaybackTick"),
+                ("Context", "isaacsim.ros2.bridge.ROS2Context"),
+                ("RenderProduct", "isaacsim.core.nodes.IsaacCreateRenderProduct"),
+                ("Colour", "isaacsim.ros2.bridge.ROS2CameraHelper"),
+                ("Depth", "isaacsim.ros2.bridge.ROS2CameraHelper"),
+                ("Info", "isaacsim.ros2.bridge.ROS2CameraInfoHelper"),
+            ],
+            og.Controller.Keys.CONNECT: [
+                ("OnPlaybackTick.outputs:tick", "RenderProduct.inputs:execIn"),
+                ("RenderProduct.outputs:execOut", "Colour.inputs:execIn"),
+                ("RenderProduct.outputs:execOut", "Depth.inputs:execIn"),
+                ("RenderProduct.outputs:execOut", "Info.inputs:execIn"),
+                ("RenderProduct.outputs:renderProductPath", "Colour.inputs:renderProductPath"),
+                ("RenderProduct.outputs:renderProductPath", "Depth.inputs:renderProductPath"),
+                ("RenderProduct.outputs:renderProductPath", "Info.inputs:renderProductPath"),
+                ("Context.outputs:context", "Colour.inputs:context"),
+                ("Context.outputs:context", "Depth.inputs:context"),
+                ("Context.outputs:context", "Info.inputs:context"),
+            ],
+            og.Controller.Keys.SET_VALUES: [
+                ("RenderProduct.inputs:cameraPrim", [usdrt.Sdf.Path(path)]),
+                ("RenderProduct.inputs:width", 640),
+                ("RenderProduct.inputs:height", 480),
+                ("Colour.inputs:type", "rgb"),
+                ("Colour.inputs:topicName", f"{topic}/camera/color"),
+                ("Colour.inputs:frameId", f"{topic}_camera"),
+                ("Depth.inputs:type", "depth"),
+                ("Depth.inputs:topicName", f"{topic}/camera/depth"),
+                ("Depth.inputs:frameId", f"{topic}_camera"),
+                ("Info.inputs:topicName", f"{topic}/camera/camera_info"),
+                ("Info.inputs:frameId", f"{topic}_camera"),
+            ],
+        },
+    )
+
+
 class Cell:
     """One arm's cell as physics: pallets as fixed boxes, cases as rigid ones, and a vacuum that takes the case under the pad.
 
@@ -197,6 +257,10 @@ class Cell:
         stage.DefinePrim(self.root, "Xform")
         node.create_subscription(String, f"/{topic}/cell", self.guarded(self.on_cell), 10)
         node.create_subscription(Bool, f"/{topic}/vacuum", self.guarded(self.on_vacuum), 10)
+        # What the cell actually looks like, for the hub to correct its picture by: the physics' word today,
+        # a perception stack's tomorrow, on the same topic.
+        self.seen = node.create_publisher(String, f"/{topic}/seen", 10)
+        self.said = 0
 
     def guarded(self, handler):
         """A callback whose failure is a log line, not the end of the simulator."""
@@ -276,6 +340,29 @@ class Cell:
 
         return best[0] if best else None
 
+    def perceive(self) -> None:
+        """Publishes every case where the physics have it, in the arm's frame, and the case on the pad."""
+        cases = []
+
+        for case_id, path in self.cases.items():
+            prim = stage.GetPrimAtPath(path)
+
+            if not prim.IsValid():
+                continue
+
+            xform = UsdGeom.Xformable(prim)
+            at = xform.ComputeLocalToWorldTransform(0).ExtractTranslation() - self.base
+            size = UsdGeom.XformCommonAPI(xform).GetXformVectors(0)[2]
+            half = Gf.Vec3d(size[0], size[1], size[2]) / 2
+            cases.append({"id": case_id, "min": from_sim(at - half), "max": from_sim(at + half)})
+
+        self.seen.publish(String(data=json.dumps({"cases": cases, "others": [], "held": self.held})))
+
+        if self.said == 0:
+            print(f"scene: {self.arm} seen on /{self.arm.replace('-', '_')}/seen, {len(cases)} cases")
+
+        self.said += 1
+
     def on_vacuum(self, message: Bool) -> None:
         if self.pad is None:
             return
@@ -340,6 +427,12 @@ for index, arm in enumerate(arms):
 
     wire(topic, root, clock=index == 0)
     cells.append(Cell(ros, arm, topic, Gf.Vec3d(0, index * args.spacing, 0), path))
+
+    try:
+        camera(topic, Gf.Vec3d(0, index * args.spacing, 0))
+        print(f"scene: {arm} camera on /{topic}/camera/color, /{topic}/camera/depth and /{topic}/camera/camera_info")
+    except Exception as error:  # noqa: BLE001
+        print(f"scene: {arm} camera not set up: {error!r}")
     print(f"scene: {arm} at {root}, on /{topic}/joint_states and /{topic}/joint_commands, cell on /{topic}/cell")
 
 simulation_app.update()
@@ -354,6 +447,14 @@ while simulation_app.is_running():
     rclpy.spin_once(ros, timeout_sec=0)
     simulation_app.update()
     frames += 1
+
+    # Ten times a second, each cell says what it sees.
+    if frames % 6 == 0:
+        for cell in cells:
+            try:
+                cell.perceive()
+            except Exception as error:  # noqa: BLE001
+                print(f"scene: {cell.arm} perceive failed: {error!r}")
 
     if args.test and frames >= 120:
         break

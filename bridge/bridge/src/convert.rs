@@ -79,6 +79,12 @@ pub fn command(from: wire::Command) -> Option<ctl::Command> {
     })
 }
 
+fn boxed(from: ctl::Obstacle) -> wire::Box {
+    let point = |p: ctl::Point| Some(wire::Point { x: p.x, y: p.y, z: p.z });
+
+    wire::Box { id: from.id, min: point(from.min), max: point(from.max) }
+}
+
 pub fn obstacles(from: Vec<wire::Box>) -> Vec<ctl::Obstacle> {
     from.into_iter().map(|b| ctl::Obstacle { id: b.id, min: point(b.min), max: point(b.max) }).collect()
 }
@@ -140,6 +146,11 @@ pub fn report(arm: &str, from: ctl::Report) -> wire::Report {
         ctl::Report::Resumed => Type::Resumed(r::Resumed {}),
         ctl::Report::Stopped => Type::Stopped(r::Stopped {}),
         ctl::Report::Reset => Type::Reset(r::Reset {}),
+        ctl::Report::Seen { cases, others, held } => Type::Seen(r::Seen {
+            cases: cases.into_iter().map(boxed).collect(),
+            others: others.into_iter().map(boxed).collect(),
+            held,
+        }),
     };
 
     wire::Report { arm: arm.to_owned(), r#type: Some(r#type) }

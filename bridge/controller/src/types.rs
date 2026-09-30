@@ -125,12 +125,31 @@ pub struct Telemetry {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Report {
     Telemetry(Telemetry),
-    Loaded { revision: u32 },
-    Rejected { revision: u32, reason: String },
-    Progress { revision: u32, step: u32 },
-    Done { revision: u32 },
-    Held { cause: Cause, seen: Vec<String> },
+    Loaded {
+        revision: u32,
+    },
+    Rejected {
+        revision: u32,
+        reason: String,
+    },
+    Progress {
+        revision: u32,
+        step: u32,
+    },
+    Done {
+        revision: u32,
+    },
+    Held {
+        cause: Cause,
+        seen: Vec<String>,
+    },
     Resumed,
     Stopped,
     Reset,
+    /// What perception sees in the cell, in the arm's frame. Never the controller's own: the bridge relays it.
+    Seen {
+        cases: Vec<Obstacle>,
+        others: Vec<Obstacle>,
+        held: Option<String>,
+    },
 }

@@ -36,6 +36,26 @@ pub struct Ros {
     measured: Arc<Mutex<HashMap<String, (Instant, Joints)>>>,
     /// The arms whose physics have gone quiet, so it is said once.
     quiet: Mutex<HashSet<String>>,
+    /// What each arm's perception last saw, kept until the bridge relays it.
+    seen: Arc<Mutex<HashMap<String, Seen>>>,
+}
+
+/// One observation of a cell, as the simulator or a perception stack publishes it on `/<arm>/seen`.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct Seen {
+    #[serde(default)]
+    pub cases: Vec<SeenBox>,
+    #[serde(default)]
+    pub others: Vec<SeenBox>,
+    #[serde(default)]
+    pub held: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct SeenBox {
+    pub id: String,
+    pub min: [f64; 3],
+    pub max: [f64; 3],
 }
 
 /// ROS names take no dashes.
@@ -81,6 +101,7 @@ impl Ros {
             publishers: Mutex::new(HashMap::new()),
             measured: Arc::default(),
             quiet: Mutex::default(),
+            seen: Arc::default(),
         }))
     }
 
@@ -93,7 +114,7 @@ impl Ros {
         }
 
         let name = topic(id);
-        let (out, mut states) = {
+        let (out, mut states, mut sights) = {
             let mut node = self.node.lock().unwrap();
             // The cell and the vacuum are state, not a stream: a simulator that starts late gets the last of each.
             let latched = QosProfile::default().transient_local();
@@ -108,11 +129,26 @@ impl Ros {
                     vacuum: node.create_publisher::<Bool>(&format!("/{name}/vacuum"), latched)?,
                 },
                 node.subscribe::<JointState>(&format!("/{name}/joint_states"), QosProfile::default())?,
+                node.subscribe::<Text>(&format!("/{name}/seen"), QosProfile::default())?,
             )
         };
 
         publishers.insert(id.to_owned(), out);
         info!(arm = id, "on /{name}/joint_commands, /{name}/cell, /{name}/vacuum and /{name}/joint_states");
+
+        let seen = self.seen.clone();
+        let sighted = id.to_owned();
+
+        tokio::spawn(async move {
+            while let Some(text) = sights.next().await {
+                match serde_json::from_str::<Seen>(&text.data) {
+                    Ok(found) => {
+                        seen.lock().unwrap().insert(sighted.clone(), found);
+                    }
+                    Err(error) => warn!(arm = %sighted, %error, "an observation the bridge could not read"),
+                }
+            }
+        });
 
         let measured = self.measured.clone();
         let id = id.to_owned();
@@ -185,6 +221,11 @@ impl Ros {
         if let Err(error) = out.cell.publish(&Text { data }) {
             warn!(arm = id, %error, "could not publish the cell");
         }
+    }
+
+    /// What `id`'s perception has seen since last asked, if anything.
+    pub fn seen(&self, id: &str) -> Option<Seen> {
+        self.seen.lock().unwrap().remove(id)
     }
 
     /// Where `id`'s physics last said its joints are.

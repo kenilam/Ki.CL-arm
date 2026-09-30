@@ -18,6 +18,12 @@ const LOOKOUT = ROOM + 0.35 * 2.5;
 /** How long the station waits after a refused plan before sending again, in seconds: refusals that come from a mismatch do not clear by themselves, so asking every tick only floods the log. */
 const RESEND = 1;
 
+/** How far a case may be seen from where the station has it, in metres, before the station moves it there. */
+const DRIFT = 0.02;
+
+/** How far a seen case has to be from its place to be said in the log, in metres. */
+const STRAYED = 0.1;
+
 const SETTLE = 0.4;
 
-export { DECK, LOOKOUT, RESEND, ROOM, SETTLE };
+export { DECK, DRIFT, LOOKOUT, RESEND, ROOM, SETTLE, STRAYED };

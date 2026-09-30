@@ -53,6 +53,7 @@ fn kinds(reports: &[Report]) -> Vec<&'static str> {
             Report::Resumed => "resumed",
             Report::Stopped => "stopped",
             Report::Reset => "reset",
+            Report::Seen { .. } => "seen",
         })
         .collect()
 }

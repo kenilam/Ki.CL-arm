@@ -1,4 +1,4 @@
-import type { Pose } from './geometry';
+import type { Box, Pose } from './geometry';
 import type { Joints } from './joints';
 
 type State = 'idle' | 'running' | 'held' | 'stopped';
@@ -35,6 +35,14 @@ type Report =
   | { type: 'held'; arm: string; cause: 'command' | 'sensor'; seen: string[] }
   | { type: 'resumed'; arm: string }
   | { type: 'stopped'; arm: string }
-  | { type: 'reset'; arm: string };
+  | { type: 'reset'; arm: string }
+  /** What the arm's perception sees in its cell, in its frame: cases by id, whatever else stands there, and the case on the pad. */
+  | {
+      type: 'seen';
+      arm: string;
+      cases: Box[];
+      others: Box[];
+      held: string | null;
+    };
 
 export type { Report, State, Telemetry };

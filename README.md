@@ -104,6 +104,10 @@ The bridge pings every hub and drops one silent for 20 s, so a page whose tunnel
 
 Two bridges share the one machine: `arm` for prod, built from `main`, and `arm-dev` for dev, built from whatever is checked out. Environments live in the containers and, later, in the two gateways in front of them; the GPU is one and Isaac Sim is one world, so dev waits when prod has it. With the tunnel up, set `KICL_ARM_BRIDGE_URL=http://localhost:3300` in Ki.CL's `.env`: its dev server sends `/arm/link` there and everything else about the page stays local, so the Physical AI switch puts the page's arms on the GCP machine.
 
+## Perception
+
+The arm's picture of its cell used to be the hub's word alone, and the simulator moved cases the hub never heard about, so a vacuum took whatever was under the pad while the hub believed it took something else. Now the picture flows back: the simulator publishes each cell on `/<arm>/seen` ten times a second, every case as a box in the arm's frame with its id, whatever else it sees as `others`, and the case on the pad as `held`. The bridge reads that JSON and relays it to the hub as a `Report.Seen`; the station moves any of its cases seen more than `DRIFT` (2 cm) from where it had them, notes one that has strayed past `STRAYED` (10 cm) once, and notes a pad holding a case the plan did not pick. The message is the contract: a perception stack that reads the camera over the cell (`/<arm>/camera/color`, `depth`, `camera_info`) and publishes the same JSON replaces the physics' word without a change anywhere else.
+
 ## Going public: the gateway
 
 Nothing here is public yet: the machine answers only to IAP and the bridge only inside the VPC. When the experiment goes public, this is the shape, agreed 2026-09-29:
@@ -121,5 +125,5 @@ Nothing here is public yet: the machine answers only to IAP and the bridge only 
 3. **GCP.** Done: the machine is up in `us-central1-a`, Isaac Sim 6.0.0 runs a stock Franka headless on its L4 with caches persisted. Isaac ROS comes with the bridge.
 4. **Bridge, Rust.** Done as far as the wire, the simulated arm, and the ROS 2 side driving our arm in Isaac Sim by joint targets with the physics setting the pace. Cases and the vacuum are in the simulator (2026-09-30). Next: cuMotion through MoveIt for swings round obstacles.
 5. **Sim content.** The arm, its pallets and cases are done (`sim/`). Next the hex floor and belts as USD, and obstacles from `Scene` so the panel's obstacle editor works against the sim.
-6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.
+6. **Perception.** The contract is in place (2026-09-30): each cell says what it sees on `/<arm>/seen` (cases as boxes by id, whatever else stands there, the case on the pad), the bridge relays it to the hub as a `seen` report, and the station moves its cases to where they are seen and says when one has strayed, so the next plan starts from where things are. Today the simulator's physics say it; a camera over each cell publishes colour, depth and its intrinsics on `/<arm>/camera/*` for FoundationPose (case poses) and nvblox (everything else) to say the same thing on the same topic. Next: those two, as Isaac ROS graphs on the machine.
 7. **Later.** A real arm behind the same bridge, and an Isaac Lab policy proposing placements that the station's stability check still has the last word on.
