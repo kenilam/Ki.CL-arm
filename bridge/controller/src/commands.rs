@@ -1,8 +1,9 @@
 //! What the hub may tell the arm. Mirrors `client/src/controller/commands.ts`.
 
+use crate::kinematics::{bearing, forward};
 use crate::servo::rest;
 use crate::state::{Arm, adopt, gripping, say};
-use crate::types::{Cause, Command, Plan, Report, State};
+use crate::types::{Cause, Command, Plan, Pose, Report, State};
 
 /// Takes a plan from the hub, or says why not. A plan that arrives mid-grip waits for the grip to settle; one that arrives during an operator's hold is taken but stays held, while a sensor's hold ends with a new plan.
 fn load(arm: &mut Arm, plan: Plan) {
@@ -83,6 +84,16 @@ pub fn command(arm: &mut Arm, received: Command) {
         }
         Command::Open { gate, .. } => {
             arm.opened.insert(gate);
+        }
+        Command::Seed { joints, .. } => {
+            // Only an arm with nothing under way: its plan's moves were made from where it stood.
+            if arm.plan.is_some() && arm.state == State::Running {
+                return;
+            }
+
+            arm.drive = rest(joints);
+            arm.goal = joints;
+            arm.setpoint = Pose { at: forward(&joints), facing: bearing(&joints) };
         }
     }
 }

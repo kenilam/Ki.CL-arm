@@ -70,7 +70,8 @@ fn watch(arm: &mut Arm) {
     }
 }
 
-/// Keeps `stalled` current: whether the physical joints have moved less than `STILL` over the last `STALLED` seconds.
+/// Keeps `stalled` current: whether the physical pad has moved less than `STILL` over the last `STALLED` seconds. At the
+/// pad, not the joints: a case swinging on the vacuum joint keeps the roll jittering while the pad stands.
 fn track(arm: &mut Arm) {
     let Some(mut measured) = arm.measured else {
         return;
@@ -79,7 +80,11 @@ fn track(arm: &mut Arm) {
 
     match arm.seen {
         Some((at, seen)) if arm.clock - at >= STALLED => {
-            arm.stalled = settled(&measured, &seen, Some(STILL));
+            let now = forward(&measured);
+            let was = forward(&seen);
+
+            arm.stalled =
+                ((now.x - was.x).powi(2) + (now.y - was.y).powi(2) + (now.z - was.z).powi(2)).sqrt() < STILL;
             arm.seen = Some((arm.clock, measured));
         }
         Some(_) => {}

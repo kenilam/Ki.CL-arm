@@ -1,3 +1,4 @@
+import type { Joints } from './joints';
 import type { Plan } from './plan';
 
 /**
@@ -6,6 +7,8 @@ import type { Plan } from './plan';
  * once, and nothing runs again until `reset`. `hold` is the gentle one: the
  * arm brakes and waits for `resume` or a new plan. `open` lets the arm past
  * a gate in its plan; sent early, it's remembered until the arm gets there.
+ * `seed` says where the joints stand, as another arm left them: a controller
+ * taking over mid-run goes on from there instead of from home.
  */
 type Command =
   | { type: 'load'; arm: string; plan: Plan }
@@ -13,6 +16,7 @@ type Command =
   | { type: 'resume'; arm: string }
   | { type: 'stop'; arm: string }
   | { type: 'reset'; arm: string }
-  | { type: 'open'; arm: string; gate: string };
+  | { type: 'open'; arm: string; gate: string }
+  | { type: 'seed'; arm: string; joints: Joints };
 
 export type { Command };

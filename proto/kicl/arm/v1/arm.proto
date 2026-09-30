@@ -128,6 +128,12 @@ message Command {
     string gate = 1;
   }
 
+  // Where the arm's joints are to be taken to stand, as another arm left them: for a controller
+  // taking over a model mid-run, so it goes on from there instead of from home.
+  message Seed {
+    Joints joints = 1;
+  }
+
   string arm = 1;
 
   oneof type {
@@ -137,6 +143,7 @@ message Command {
     Stop stop = 5;
     Reset reset = 6;
     Open open = 7;
+    Seed seed = 8;
   }
 }
 

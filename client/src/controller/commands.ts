@@ -1,6 +1,9 @@
 // Protocol
 import type { Command, Plan } from '../protocol';
 
+// Model
+import { bearing, forward } from '../model/kinematics';
+
 // Partials
 import { rest } from './servo';
 import { adopt, type Arm, gripping, say } from './state';
@@ -98,6 +101,20 @@ const command = (arm: Arm, received: Command) => {
       return;
     case 'open':
       arm.opened.add(received.gate);
+
+      return;
+    case 'seed':
+      // Only an arm with nothing under way: its plan's moves were made from where it stood.
+      if (arm.plan && arm.state === 'running') {
+        return;
+      }
+
+      arm.drive = rest(received.joints);
+      arm.goal = received.joints;
+      arm.setpoint = {
+        at: forward(received.joints),
+        facing: bearing(received.joints),
+      };
   }
 };
 
