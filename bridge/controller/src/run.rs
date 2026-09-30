@@ -28,6 +28,18 @@ fn complete(arm: &mut Arm) {
     arm.stalled = false;
 
     if let Some(pending) = arm.pending.take() {
+        // Kept back through a grip: what the arm holds has changed since it was checked, so it is checked again.
+        if pending.holding != arm.holding {
+            let reason = match &arm.holding {
+                Some(case) => format!("holding case {case}"),
+                None => "holding nothing".to_owned(),
+            };
+
+            say(arm, Report::Rejected { revision: pending.revision, reason });
+
+            return;
+        }
+
         adopt(arm, pending);
 
         return;

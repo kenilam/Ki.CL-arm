@@ -8,7 +8,7 @@ import { REST } from '../model/constants';
 import { alongBelt } from '../grid/layout';
 
 // Partials
-import { retry } from './jobs';
+import { cancel, retry } from './jobs';
 import { RESEND } from './constants';
 import { label, note, say, send, show, type Station, world } from './state';
 import { place, remove } from './world';
@@ -36,8 +36,13 @@ const handle = (station: Station, report: Report) => {
       }
 
       return;
+    case 'loaded':
+      // A plan got in: whatever was refused before it is superseded, not to be sent again.
+      station.resend = false;
+
+      return;
     case 'rejected':
-      note(station, 'arm refused the plan', 'error', report.reason);
+      note(station, 'arm refused', 'error', report.reason);
       reconcile(station);
       station.resend = true;
       station.resendAt = station.clock + RESEND;
@@ -88,13 +93,15 @@ const reconcile = (station: Station) => {
     const standing = station.cases[truth];
 
     if (!standing) {
+      // Nothing to plan with: no size, no place it came from. The arm keeps it, and the operator is told.
       note(
         station,
         `arm holds ${label(truth)}, unknown here`,
         'error',
-        'stopping'
+        'waiting for an operator'
       );
-      station.link.send({ type: 'stop', arm: station.id });
+      cancel(station);
+      station.resend = false;
 
       return;
     }
