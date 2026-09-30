@@ -173,6 +173,8 @@ message Telemetry {
   Joints joints = 5;
   Pose pad = 6;
   optional string holding = 7;
+  // The joints the controller asked for, when `joints` are what a physical arm or a simulator did instead.
+  optional Joints target = 8;
 }
 
 // What an arm tells the hub. `progress` is one instruction finished; `held`

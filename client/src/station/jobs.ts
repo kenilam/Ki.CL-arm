@@ -18,7 +18,6 @@ import {
   say,
   send,
   type Station,
-  title,
   world,
 } from './state';
 import { over, place, remove } from './world';
@@ -214,7 +213,7 @@ const next = (station: Station) => {
       station.waiting.add(order.target);
       note(
         station,
-        `${title(order.target)} waits`,
+        `${label(order.target)} waits`,
         'info',
         'for room on the buffer'
       );

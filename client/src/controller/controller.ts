@@ -55,6 +55,7 @@ const create = ({ arm: id }: { arm: string }) => {
     joints: arm.drive.joints,
     pad: { at: forward(arm.drive.joints), facing: bearing(arm.drive.joints) },
     holding: arm.holding,
+    target: null,
   });
 
   return {

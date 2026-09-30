@@ -113,9 +113,10 @@ const dial = (address: string, reopened: () => void = () => {}) => {
 
       return {
         arm,
+        where: address,
         send,
-        feed: (boxes, cases, pallets) =>
-          send({ type: 'scene', arm, boxes, cases, pallets }),
+        feed: (boxes, cases, pallets, belts) =>
+          send({ type: 'scene', arm, boxes, cases, pallets, belts }),
         listen: (handler) => {
           own.add(handler);
 

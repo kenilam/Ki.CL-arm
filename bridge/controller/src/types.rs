@@ -115,6 +115,8 @@ pub struct Telemetry {
     pub joints: Joints,
     pub pad: Pose,
     pub holding: Option<String>,
+    /// The joints the controller asked for, when `joints` are what the physics did instead.
+    pub target: Option<Joints>,
 }
 
 /// What an arm tells the hub.

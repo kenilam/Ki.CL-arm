@@ -18,6 +18,7 @@ const connect = (arm: string): Link & { feed: Feed } => {
 
   return {
     arm,
+    where: 'worker',
     send: (command) => worker.postMessage(command),
     feed: (boxes, cases, pallets) =>
       worker.postMessage({ type: 'scene', boxes, cases, pallets }),

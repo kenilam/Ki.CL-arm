@@ -4,9 +4,9 @@
 //! `sensor_msgs/JointState` with the controller's joint names. The arm in
 //! Isaac Sim is `sim/arm.urdf`, whose joints are those by name and sign.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use arm_controller::Joints;
 use futures_util::StreamExt;
@@ -14,6 +14,9 @@ use r2r::sensor_msgs::msg::JointState;
 use r2r::std_msgs::msg::{Bool, String as Text};
 use r2r::{Node, Publisher, QosProfile};
 use tracing::{info, warn};
+
+/// How long the physics may go without reporting joints before it is said.
+const QUIET: Duration = Duration::from_secs(1);
 
 const NAMES: [&str; 5] = ["yaw", "shoulder", "elbow", "wrist", "roll"];
 
@@ -29,7 +32,10 @@ pub struct Ros {
     node: Arc<Mutex<Node>>,
     publishers: Mutex<HashMap<String, Out>>,
     /// The joints last reported by each arm's physics, by arm id.
-    measured: Arc<Mutex<HashMap<String, Joints>>>,
+    /// Each arm's joints as the physics last reported them, and when.
+    measured: Arc<Mutex<HashMap<String, (Instant, Joints)>>>,
+    /// The arms whose physics have gone quiet, so it is said once.
+    quiet: Mutex<HashSet<String>>,
 }
 
 /// ROS names take no dashes.
@@ -70,7 +76,12 @@ impl Ros {
         });
         info!("ros2 node arm_bridge up");
 
-        Ok(Arc::new(Self { node, publishers: Mutex::new(HashMap::new()), measured: Arc::default() }))
+        Ok(Arc::new(Self {
+            node,
+            publishers: Mutex::new(HashMap::new()),
+            measured: Arc::default(),
+            quiet: Mutex::default(),
+        }))
     }
 
     /// The topics for `id`, made on first mention: a publisher for its commands, and a subscription that keeps its latest joint state.
@@ -110,7 +121,7 @@ impl Ros {
             while let Some(state) = states.next().await {
                 match joints(&state) {
                     Some(found) => {
-                        measured.lock().unwrap().insert(id.clone(), found);
+                        measured.lock().unwrap().insert(id.clone(), (Instant::now(), found));
                     }
                     None => warn!(arm = %id, "a joint state without the arm's joints"),
                 }
@@ -178,6 +189,21 @@ impl Ros {
 
     /// Where `id`'s physics last said its joints are.
     pub fn measured(&self, id: &str) -> Option<Joints> {
-        self.measured.lock().unwrap().get(id).copied()
+        let (at, joints) = self.measured.lock().unwrap().get(id).copied()?;
+        let mut quiet = self.quiet.lock().unwrap();
+
+        if at.elapsed() > QUIET {
+            if quiet.insert(id.to_owned()) {
+                warn!(
+                    arm = id,
+                    "no joint states from the physics for {}s; the last ones stand",
+                    QUIET.as_secs()
+                );
+            }
+        } else if quiet.remove(id) {
+            info!(arm = id, "joint states from the physics again");
+        }
+
+        Some(joints)
     }
 }

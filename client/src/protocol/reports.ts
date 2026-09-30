@@ -17,6 +17,8 @@ type Telemetry = {
   joints: Joints;
   pad: Pose;
   holding: string | null;
+  /** The joints the controller asked for, when `joints` are what a physical arm or a simulator did instead; null for an arm that is its own model. */
+  target: Joints | null;
 };
 
 /**

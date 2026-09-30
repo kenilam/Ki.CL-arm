@@ -174,7 +174,5 @@ const send = (station: Station, steps: Instruction[]) => {
 
 /** How a case reads in the log, and at the start of a line. */
 const label = (id: string) => `case ${id}`;
-const title = (id: string) => `Case ${id}`;
-
-export { boot, known, label, note, say, send, show, title, world };
+export { boot, known, label, note, say, send, show, world };
 export type { Job, Order, Station };

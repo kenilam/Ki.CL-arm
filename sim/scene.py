@@ -185,6 +185,9 @@ class Cell:
         self.cases: dict[str, str] = {}
         self.pallets: dict[str, str] = {}
         self.belts: dict[str, str] = {}
+        # Prim names never come round again: a case removed and another spawned must not share a path.
+        self.spawned = 0
+        self.vacuum = False
         self.held: str | None = None
         self.joint = f"{self.root}/vacuum"
         stage.DefinePrim(self.root, "Xform")
@@ -220,24 +223,26 @@ class Cell:
 
         return path
 
+    def name(self, kind: str) -> str:
+        self.spawned += 1
+
+        return f"{self.root}/{kind}_{self.spawned}"
+
     def on_cell(self, message: String) -> None:
         cell = json.loads(message.data)
         wanted = {one["id"]: one for one in cell.get("cases", [])}
 
         for pallet in cell.get("pallets", []):
             if pallet["id"] not in self.pallets:
-                path = f"{self.root}/{Sdf.Path.IsValidIdentifier(pallet['id']) and pallet['id'] or 'p_' + str(len(self.pallets))}"
-                self.pallets[pallet["id"]] = self.box(path, pallet, rigid=False, colour=Gf.Vec3f(0.55, 0.4, 0.2))
+                self.pallets[pallet["id"]] = self.box(self.name("pallet"), pallet, rigid=False, colour=Gf.Vec3f(0.55, 0.4, 0.2))
 
         for belt in cell.get("belts", []):
             if belt["id"] not in self.belts:
-                path = f"{self.root}/belt_{len(self.belts)}"
-                self.belts[belt["id"]] = self.box(path, belt, rigid=False, colour=Gf.Vec3f(0.15, 0.15, 0.15))
+                self.belts[belt["id"]] = self.box(self.name("belt"), belt, rigid=False, colour=Gf.Vec3f(0.15, 0.15, 0.15))
 
         for case_id, one in wanted.items():
             if case_id not in self.cases:
-                path = f"{self.root}/case_{len(self.cases)}"
-                self.cases[case_id] = self.box(path, one, rigid=True, colour=Gf.Vec3f(0.65, 0.85, 0.45))
+                self.cases[case_id] = self.box(self.name("case"), one, rigid=True, colour=Gf.Vec3f(0.65, 0.85, 0.45))
 
         for case_id in list(self.cases):
             if case_id not in wanted and case_id != self.held:
@@ -269,17 +274,27 @@ class Cell:
         if self.pad is None:
             return
 
+        switched = message.data != self.vacuum
+        self.vacuum = message.data
+
         if message.data and self.held is None:
             case_id = self.under_pad()
 
             if case_id is None:
-                pad = UsdGeom.Xformable(stage.GetPrimAtPath(self.pad)).ComputeLocalToWorldTransform(0)
-                face = pad.Transform(Gf.Vec3d(0.5, 0, 0))
-                cases = {
-                    one: tuple(round(v, 3) for v in UsdGeom.Xformable(stage.GetPrimAtPath(path)).ComputeLocalToWorldTransform(0).ExtractTranslation())
-                    for one, path in self.cases.items()
-                }
-                print(f"scene: {self.arm} vacuum on, nothing under the pad: face {tuple(round(v, 3) for v in face)}, cases {cases}")
+                # Said once, as the vacuum comes on: where the pad's face is, and the case nearest under it.
+                if switched:
+                    pad = UsdGeom.Xformable(stage.GetPrimAtPath(self.pad)).ComputeLocalToWorldTransform(0)
+                    face = pad.Transform(Gf.Vec3d(0.5, 0, 0))
+                    nearest = min(
+                        (
+                            (one, UsdGeom.Xformable(stage.GetPrimAtPath(path)).ComputeLocalToWorldTransform(0).ExtractTranslation())
+                            for one, path in self.cases.items()
+                        ),
+                        key=lambda found: (found[1] - face).GetLength(),
+                        default=None,
+                    )
+                    where = f"nearest {nearest[0]} at {tuple(round(v, 3) for v in nearest[1])}" if nearest else "no cases"
+                    print(f"scene: {self.arm} vacuum on with nothing under the pad: face {tuple(round(v, 3) for v in face)}, {where}")
                 return
 
             joint = UsdPhysics.FixedJoint.Define(stage, self.joint)

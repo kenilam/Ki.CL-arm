@@ -22,6 +22,8 @@ type Feed = (
 
 type Link = {
   arm: string;
+  /** What carries the arm, for whoever asks: `worker` on this page, or the address of the socket. */
+  where: string;
   send: (command: Command) => void;
   listen: (handler: (report: Report) => void) => () => void;
   close: () => void;

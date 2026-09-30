@@ -179,6 +179,7 @@ fn telemetry_of(id: &str, controller: &Controller, ros: &Ros) -> Telemetry {
 
         if let Some(mut measured) = ros.measured(id) {
             measured.grip = latest.joints.grip;
+            latest.target = Some(latest.joints);
             latest.joints = measured;
             latest.pad = Pose { at: forward(&measured), facing: bearing(&measured) };
         }

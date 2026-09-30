@@ -24,7 +24,8 @@ type Rider = {
  * What the station tells whoever watches it: notes for a log, each a
  * headline and, when there's more to say, a detail; what to
  * light, and the cell as it stands whenever a case moves. Telemetry passes
- * straight through from the arm. `placed` is a case set on a belt, for the
+ * straight through from the arm. `linked` says what carries the arm, each
+ * time the station greets it. `placed` is a case set on a belt, for the
  * hub to carry along it; `pallet` is one of the cell's own set down on a
  * slot, for the cases that arrive here; `idle` says the arm has nothing
  * to do, or has again. `struck` names the obstacles standing in the arm
@@ -38,6 +39,7 @@ type Event =
   | { type: 'calm' }
   | { type: 'struck'; obstacles: string[] }
   | { type: 'telemetry'; report: Telemetry }
+  | { type: 'linked'; where: string }
   | { type: 'cell'; cases: Case[]; holding: Case | null; riders: Rider[] }
   | { type: 'placed'; rider: Rider }
   | { type: 'pallet'; at: Vector }
