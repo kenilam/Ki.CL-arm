@@ -526,7 +526,7 @@ const create = ({
       station,
       `${label(rider.id)} arrived`,
       'info',
-      'taking it off the belt'
+      'off the belt'
     );
     show(station);
 
