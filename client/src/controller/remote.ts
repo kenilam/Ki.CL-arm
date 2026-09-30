@@ -24,9 +24,12 @@ const resolve = (address: string) => {
  * arm. Every frame is one protobuf message; the arm's id in it tells the
  * links apart. While the socket is down, commands queue and only the last
  * scene per arm is kept, and all of it goes out once it is up again.
+ * `reopened` is called on every open after the first: the arms on the far
+ * end may have restarted meanwhile, and the hub should greet them again.
  */
-const dial = (address: string) => {
+const dial = (address: string, reopened: () => void = () => {}) => {
   const url = resolve(address);
+  let opened = false;
   const handlers = new Map<string, Set<(report: Report) => void>>();
   const commands: Uint8Array[] = [];
   const scenes = new Map<string, Uint8Array>();
@@ -48,7 +51,15 @@ const dial = (address: string) => {
   const open = () => {
     socket = new WebSocket(url);
     socket.binaryType = 'arraybuffer';
-    socket.onopen = flush;
+    socket.onopen = () => {
+      flush();
+
+      if (opened) {
+        reopened();
+      }
+
+      opened = true;
+    };
     socket.onmessage = ({ data }: MessageEvent<ArrayBuffer>) => {
       try {
         const report = decodeReport(new Uint8Array(data));

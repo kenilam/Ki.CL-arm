@@ -119,11 +119,14 @@ const wake = () => {
   }
 };
 
+/** The bridge came back after going away: whatever is behind it now may know nothing, so every station greets its arm again. */
+const greet = () => hub?.stations.forEach(({ id }) => hub?.wake(id));
+
 /** A new hub from `cells` and `lines`, its arms in workers here or on the bridge at `link`. */
 const build = (cells: Cell[], lines: Line[], link?: string) => {
   hub?.close();
   wire?.close();
-  wire = link ? dial(link) : null;
+  wire = link ? dial(link, greet) : null;
   // Each arm's controller runs in a worker of its own, as its own box would, unless a bridge has them.
   hub = create({
     cells,
@@ -174,7 +177,7 @@ scope.onmessage = ({ data }) => {
       return;
     case 'link':
       // The links let go of close themselves as each station swaps; a wire's socket goes with its last link.
-      wire = data.link ? dial(data.link) : null;
+      wire = data.link ? dial(data.link, greet) : null;
       hub?.stations.forEach(({ id }) => {
         const found = wire ? wire.link(id) : connect(id);
 
