@@ -175,7 +175,7 @@ const send = (station: Station, steps: Instruction[]) => {
   return station.revision;
 };
 
-/** How a case reads in the log, and at the start of a line. */
-const label = (id: string) => `case ${id}`;
+/** How a case reads in the log: its id alone, which says what it is. */
+const label = (id: string) => id;
 export { boot, known, label, note, say, send, show, world };
 export type { Job, Order, Station };

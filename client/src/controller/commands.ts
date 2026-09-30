@@ -29,7 +29,7 @@ const load = (arm: Arm, plan: Plan) => {
   }
 
   if (plan.revision <= latest) {
-    return refuse(`revision ${plan.revision} is not after ${latest}`);
+    return refuse(`revision - ${plan.revision}, latest - ${latest}`);
   }
 
   if (plan.holding !== arm.holding) {
