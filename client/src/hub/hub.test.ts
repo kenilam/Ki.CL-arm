@@ -90,7 +90,7 @@ describe('the hub', () => {
     run(60, () => {
       lines.push(...log());
 
-      return lines.some((line) => line.includes('down on its own pallet'));
+      return lines.some((line) => line.includes('down own pallet'));
     });
 
     assert.ok(
@@ -98,9 +98,7 @@ describe('the hub', () => {
       lines.join('\n')
     );
     assert.ok(
-      lines.some(
-        (line) => line === 'arm-a: set case c1 down on its own pallet'
-      ),
+      lines.some((line) => line === 'arm-a: set c1 down own pallet'),
       lines.join('\n')
     );
     assert.deepEqual(hub.board.targets()[0].queue, []);
@@ -122,7 +120,7 @@ describe('the hub', () => {
     run(90, () => {
       lines.push(...log());
 
-      return lines.some((line) => line.includes('down on its own pallet'));
+      return lines.some((line) => line.includes('down own pallet'));
     });
 
     assert.ok(
@@ -174,7 +172,7 @@ describe('the hub', () => {
       lines.join('\n')
     );
     assert.ok(
-      lines.some((line) => line.includes('no clear path for case c1')),
+      lines.some((line) => line.includes('no clear path for c1')),
       lines.join('\n')
     );
   });
@@ -313,7 +311,7 @@ describe('the hub', () => {
     run(150, () => {
       lines.push(...log());
 
-      return lines.some((line) => line.includes('down on its own pallet'));
+      return lines.some((line) => line.includes('down own pallet'));
     });
 
     assert.ok(
@@ -321,9 +319,7 @@ describe('the hub', () => {
       lines.join('\n')
     );
     assert.ok(
-      lines.some(
-        (line) => line === 'arm-c: set case c1 down on its own pallet'
-      ),
+      lines.some((line) => line === 'arm-c: set c1 down own pallet'),
       lines.join('\n')
     );
     assert.ok(!hub.stations.get('1,0')!.snapshot().cases.c1);
@@ -449,7 +445,7 @@ describe('the hub', () => {
         .drain()
         .some(
           ({ event }) =>
-            event.type === 'note' && event.text === 'no room for pallet p2'
+            event.type === 'note' && event.text === 'no room for p2'
         )
     );
   });
@@ -499,15 +495,13 @@ describe('the hub', () => {
       lines.push(...log());
 
       return (
-        lines.filter((line) => line.includes('down on its own pallet'))
-          .length === 8
+        lines.filter((line) => line.includes('down own pallet')).length === 8
       );
     });
 
     const by = (arm: string) =>
       lines.filter(
-        (line) =>
-          line.startsWith(`${arm}: set case`) && line.includes('own pallet')
+        (line) => line.startsWith(`${arm}: set `) && line.includes('own pallet')
       ).length;
 
     assert.ok(

@@ -42,7 +42,7 @@ const handle = (station: Station, report: Report) => {
 
       return;
     case 'rejected':
-      note(station, 'arm refused', 'error', report.reason);
+      note(station, 'refused', 'error', report.reason);
       reconcile(station);
       station.resend = true;
       station.resendAt = station.clock + RESEND;
@@ -77,7 +77,7 @@ const handle = (station: Station, report: Report) => {
 /**
  * The arm's word on what is on its pad beats the station's: after a refusal
  * the station takes the arm's `holding` as its own, so the next plan is not
- * refused for the same reason. A case the arm holds that the station had
+ * refused for the same reason. A case the that the station had
  * standing in the cell comes off the cell; one the station thought held
  * that the arm says is gone is dropped from the picture, and said.
  */
@@ -96,7 +96,7 @@ const reconcile = (station: Station) => {
       // Nothing to plan with: no size, no place it came from. The arm keeps it, and the operator is told.
       note(
         station,
-        `arm holds ${label(truth)}, unknown here`,
+        `${label(truth)}, unknown here`,
         'error',
         'waiting for an operator'
       );
@@ -108,11 +108,11 @@ const reconcile = (station: Station) => {
 
     station.holding = standing;
     station.cases = remove(world(station), truth).cases;
-    note(station, `arm holds ${label(truth)}`, 'warning', 'taking its word');
+    note(station, `${label(truth)}`, 'warning', 'has warning');
   } else {
     note(
       station,
-      `arm holds nothing, not ${label(own!)}`,
+      `not holding not ${label(own!)}`,
       'warning',
       'the case is lost'
     );
@@ -198,7 +198,7 @@ const progress = (
       move.to === BUFFER
         ? 'on the buffer'
         : stays(move.to)
-          ? 'on its own pallet'
+          ? 'own pallet'
           : 'on the belt'
     );
     // A case set down changes the cell: a case refused for want of room or a way may have one now.

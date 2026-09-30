@@ -230,7 +230,7 @@ const create = ({
         event: {
           type: 'note',
           level: 'error',
-          text: `no room for pallet ${target.id}`,
+          text: `no room for ${target.id}`,
           detail: `slot ${target.at.slot} of ${index(target.at.parent)} is taken, or the one facing it`,
         },
       });

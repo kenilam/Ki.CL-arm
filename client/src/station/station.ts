@@ -213,12 +213,7 @@ const create = ({
 
     claims.set(target.id, claim);
     taken.push(station.clock);
-    note(
-      station,
-      `pallet ${target.id}`,
-      'info',
-      `${target.queue.length} remains`
-    );
+    note(station, `${target.id}`, 'info', `${target.queue.length} remains`);
     requeue(target, claim);
     show(station);
   };
@@ -252,7 +247,7 @@ const create = ({
       // Only what still stands on the pallet is left to send; the rest went out or waits on the buffer.
       target.queue.filter((one) => left.some(({ id: kept }) => kept === one))
     );
-    note(station, `put pallet ${target.id} back`, 'info');
+    note(station, `put ${target.id} back`, 'info');
     show(station);
   };
 
@@ -298,7 +293,7 @@ const create = ({
           stuck.add(target.id);
           note(
             station,
-            `leaving pallet ${target.id}`,
+            `leaving ${target.id}`,
             'error',
             `no belt past ${id} toward cell ${target.to.q},${target.to.r}`
           );

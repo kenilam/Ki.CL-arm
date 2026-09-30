@@ -167,15 +167,15 @@ describe('a station', () => {
     const notes = texts(events);
 
     assert.ok(
-      notes.some((text) => text.startsWith('pallet p1')),
+      notes.some((text) => text.startsWith('p1')),
       notes.join('\n')
     );
     assert.ok(
-      notes.some((text) => text.startsWith('set case 1rf down on the belt')),
+      notes.some((text) => text.startsWith('set 1rf down on the belt')),
       notes.join('\n')
     );
     assert.ok(
-      notes.some((text) => text.startsWith('put pallet p1 back')),
+      notes.some((text) => text.startsWith('put p1 back')),
       notes.join('\n')
     );
     assert.equal(events.filter((event) => event.type === 'placed').length, 2);
@@ -207,11 +207,11 @@ describe('a station', () => {
     const notes = texts(events);
 
     assert.ok(
-      !notes.some((text) => text.startsWith('arm refused')),
+      !notes.some((text) => text.startsWith('refused')),
       notes.join('\n')
     );
     assert.ok(
-      notes.some((text) => text.startsWith('put pallet p1 back')),
+      notes.some((text) => text.startsWith('put p1 back')),
       notes.join('\n')
     );
   });
@@ -244,11 +244,11 @@ describe('a station', () => {
 
     assert.ok(heard.includes('loaded'), 'the new arm was never given a plan');
     assert.ok(
-      !notes.some((text) => text.startsWith('arm refused')),
+      !notes.some((text) => text.startsWith('refused')),
       notes.join('\n')
     );
     assert.ok(
-      notes.some((text) => text.startsWith('put pallet p1 back')),
+      notes.some((text) => text.startsWith('put p1 back')),
       notes.join('\n')
     );
     assert.equal(events.filter((event) => event.type === 'placed').length, 2);
@@ -261,7 +261,7 @@ describe('a station', () => {
     const notes = texts(events);
 
     assert.ok(
-      notes.some((text) => text.startsWith('set case 1rf down on the buffer')),
+      notes.some((text) => text.startsWith('set 1rf down on the buffer')),
       notes.join('\n')
     );
     assert.ok(target.cases.every(({ id }) => id !== '0rf'));
@@ -298,8 +298,7 @@ describe('a station', () => {
     assert.equal(target.claimed, null);
     assert.ok(
       events.some(
-        (event) =>
-          event.type === 'note' && event.text.startsWith('leaving pallet')
+        (event) => event.type === 'note' && event.text.startsWith('leaving ')
       )
     );
   });

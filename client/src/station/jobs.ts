@@ -35,11 +35,7 @@ import {
 
 /** Where a move puts its case, for the log. */
 const where = (to: string) =>
-  to === BUFFER
-    ? 'on the buffer, out of the way'
-    : to === HERE
-      ? 'on its own pallet'
-      : 'on the belt';
+  to === BUFFER ? 'on the buffer' : to === HERE ? 'own pallet' : 'on the belt';
 
 /** The instruction the arm is on, from its telemetry: none until it reports on the plan it was last sent. */
 const current = ({ job, telemetry }: Station) =>
