@@ -87,6 +87,7 @@ bridge.run:
 	cd bridge && cargo run -p arm-bridge -- --listen 127.0.0.1:3201
 
 # Builds the bridge on the machine and runs it there: `arm` on :3200, or `arm-dev` on :3201 with STAGE=dev.
+# ROS=1 builds the ROS 2 flavour, which drives the arms in Isaac Sim (make gcp.sim).
 gcp.bridge:
 	gcp/bridge.sh
 
