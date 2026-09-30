@@ -52,7 +52,7 @@ Isaac Sim and Isaac ROS run on one GPU machine in GCP, and the page reaches it o
 ```bash
 gcloud auth login
 make gcp.quota    # L4s in the region and GPUs anywhere; both start at 0 and a request can take a day
-make gcp.up       # APIs, the IAP-only firewall rule, a nightly stop, then the machine; run again to start it
+make gcp.up       # APIs, the IAP-only firewall rule, Cloud NAT, a nightly stop, then the machine; run again to start it
 make gcp.status   # state, and the tail of what the startup script said
 make gcp.ssh      # a shell there, over IAP
 NGC_API_KEY=… make gcp.ngc   # docker login to nvcr.io on the machine, key over ssh, never stored
