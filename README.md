@@ -62,7 +62,7 @@ make gcp.isaac.log
 make gcp.down     # stop; the disk stays. make gcp.delete takes it all away
 ```
 
-First boot installs the NVIDIA driver, reboots once, then installs Docker and the NVIDIA container toolkit and proves a container can see the GPU. `make gcp.status` shows it happen. The machine stops itself at 22:00 (`STOP_AT`, `TIMEZONE`) so a forgotten box costs an evening, not a month; it bills whenever it is up.
+First boot installs the NVIDIA driver, reboots once, then installs Docker and the NVIDIA container toolkit, proves a container can see the GPU, and sets up the idle watchdog: a timer that stops the machine after 30 minutes with no connection on the bridge's port and no ssh session. `make gcp.status` shows it happen. The machine stops itself at 22:00 (`STOP_AT`, `TIMEZONE`) so a forgotten box costs an evening, not a month; it bills whenever it is up.
 
 `make gcp.isaac` runs a command in the Isaac Sim 6.0.0 container on the machine, detached, with the simulator's caches kept under `/var/lib/arm/isaac` between runs; `make gcp.isaac.log` tails its log. With no command it runs the stock Franka follow-target example headless for a fixed number of frames, which is how the GPU and the simulator were proven. Two things the NVIDIA container docs do not say for this version: the image runs as user `isaac-sim` (uid 1234) with its home at `/isaac-sim`, so the cache mounts go under that home, not `/root`, and the folders on the machine have to belong to that uid. Root-owned folders gave "Failed to acquire exclusive lock to data store" and an RTX shader cache failure, and nothing was cached.
 

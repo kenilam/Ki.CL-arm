@@ -8,7 +8,7 @@ set -euo pipefail
 MARK=/var/lib/arm/ready
 log() { echo "arm-startup: $*"; }
 
-if [ -f "$MARK" ]; then
+if [ -f "$MARK" ] && [ -f /etc/systemd/system/arm-idle.timer ]; then
   nvidia-smi --query-gpu=name,driver_version --format=csv,noheader || log "GPU missing"
   log "ready"
   exit 0
@@ -69,6 +69,44 @@ if [ -n "$secret" ] && key="$(gcloud secrets versions access latest --secret "$s
 else
   log "no NGC key in Secret Manager yet (secret: ${secret:-unset}); make gcp.ngc puts one there"
 fi
+
+# The idle watchdog: with no hub on the bridge and no ssh session for IDLE minutes, the machine stops itself.
+# A stopped machine bills only its disk, so a forgotten afternoon costs nothing. `make gcp.up` starts it again.
+cat > /usr/local/bin/arm-idle <<'WATCH'
+#!/usr/bin/env bash
+IDLE_MINUTES=${IDLE_MINUTES:-30}
+STAMP=/run/arm-idle-since
+busy=0
+ss -Htn state established '( sport = :3200 )' | grep -q . && busy=1
+ss -Htn state established '( sport = :22 )' | grep -q . && busy=1
+if [ "$busy" = 1 ]; then rm -f "$STAMP"; exit 0; fi
+[ -f "$STAMP" ] || date +%s > "$STAMP"
+idle=$(( ($(date +%s) - $(cat "$STAMP")) / 60 ))
+if [ "$idle" -ge "$IDLE_MINUTES" ]; then
+  echo "arm-idle: nothing on the bridge or ssh for $idle minutes; stopping"
+  shutdown -h now
+fi
+WATCH
+chmod +x /usr/local/bin/arm-idle
+cat > /etc/systemd/system/arm-idle.service <<'UNIT'
+[Unit]
+Description=Stop the machine when nobody has used the arm for a while
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/arm-idle
+UNIT
+cat > /etc/systemd/system/arm-idle.timer <<'UNIT'
+[Unit]
+Description=Check every minute whether the arm is idle
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1min
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now arm-idle.timer
+log "idle watchdog on"
 
 mkdir -p "$(dirname "$MARK")"
 touch "$MARK"
