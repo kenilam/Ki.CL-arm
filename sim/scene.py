@@ -57,6 +57,7 @@ from std_msgs.msg import Bool, String  # noqa: E402
 # speed and acceleration caps, so the drive only has to follow. Stiff enough
 # that gravity sag stays inside the controller's FOLLOWED tolerance.
 FREQUENCY = 50.0
+CASE_MASS = 2.0
 STIFFNESS = FREQUENCY**2
 DAMPING = 2.2 * FREQUENCY
 
@@ -222,7 +223,9 @@ class Cell:
 
         if rigid:
             UsdPhysics.RigidBodyAPI.Apply(prim.GetPrim())
-            UsdPhysics.MassAPI.Apply(prim.GetPrim()).GetMassAttr().Set(8.0)
+            # A light tote: the drives are acceleration drives sized for the arm's own links, and a heavy case
+            # hanging off the pad by the vacuum joint is mass they do not see, so the wrist sagged under it.
+            UsdPhysics.MassAPI.Apply(prim.GetPrim()).GetMassAttr().Set(CASE_MASS)
 
         return path
 
