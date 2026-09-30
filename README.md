@@ -84,6 +84,8 @@ make gcp.bridge.log
 make gcp.tunnel     # localhost:3300 -> the machine's 3200
 ```
 
+`bridge/Dockerfile.ros2` is the draft for the ROS 2 flavour: the Isaac ROS development image as base, Rust and `r2r` on top, built with ROS sourced. The machine keeps a checkout of `isaac_ros_common` under `/var/lib/arm/isaac_ros` whose `run_dev.sh` pulls that base image and tags it `isaac_ros_dev-x86_64`.
+
 Rust over C++ because the bridge's own work is sockets and protobuf, where Rust's libraries are the best available, and because of that shared controller. ROS 2 is reached with `r2r`, and MoveIt through its action interfaces, which need no client library.
 
 With the tunnel up, set `KICL_ARM_BRIDGE_URL=http://localhost:3300` in Ki.CL's `.env`: its dev server sends `/arm/link` there and everything else about the page stays local, so the Physical AI switch puts the page's arms on the GCP machine.
