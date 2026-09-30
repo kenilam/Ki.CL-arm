@@ -49,7 +49,23 @@ case "$status" in
     ;;
   TERMINATED | STOPPED)
     echo "starting $NAME"
-    gcloud compute instances start "$NAME" --zone "$ZONE" --project "$PROJECT" >/dev/null
+    # The zone can be out of L4s for a while (STOCKOUT). A retry every minute usually gets one within the
+    # hour; past that, move the machine with SNAPSHOT (README, "The GCP machine").
+    for attempt in $(seq 1 "${START_TRIES:-30}"); do
+      if output="$(gcloud compute instances start "$NAME" --zone "$ZONE" --project "$PROJECT" 2>&1)"; then
+        break
+      fi
+      case "$output" in
+        *STOCKOUT* | *"does not have enough resources"*)
+          echo "no L4 in $ZONE right now (try $attempt); again in a minute"
+          sleep 60
+          ;;
+        *)
+          echo "$output" >&2
+          exit 1
+          ;;
+      esac
+    done
     ;;
   "")
     echo "creating $NAME: $MACHINE in $ZONE, ${DISK_GB}GB, $( [ "$SPOT" = 1 ] && echo spot || echo on-demand )${SNAPSHOT:+, from snapshot $SNAPSHOT}"
