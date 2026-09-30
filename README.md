@@ -10,7 +10,7 @@ Three things live here:
 
 ```bash
 make install
-make run        # rebuilds the remote as it changes, serves it and the simulated arms on :3200
+make run        # builds the remote, rebuilds it as it changes, serves it and the simulated arms on :3200
 make test       # 49 node:test suites across the client
 make typecheck
 make codegen    # TypeScript for the wire from proto/
@@ -36,7 +36,7 @@ Why WebSocket and protobuf rather than gRPC or GraphQL: a browser cannot speak n
 
 `make codegen` writes the TypeScript for the wire into `client/src/protocol/wire/gen` with a remote `protoc-gen-es` plugin, so nothing to install. The generated file is committed. The C++ bridge will generate its own from the same file when it arrives here.
 
-Ki.CL gets its types for `arm/*` from the remote's `@mf-types.zip`, pulled by the Module Federation plugin at dev start into `App/@mf-types/arm`.
+Ki.CL gets its types for `arm/*` from the remote's `@mf-types.zip`, pulled by the Module Federation plugin at dev start into `App/@mf-types/arm`. The watch rebuild does not regenerate types; a full build does, and `make run` starts with one. After changing anything Ki.CL imports, run `make build` here and restart Ki.CL's dev server so it pulls the new types.
 
 ## The arm side of the wire, today
 
