@@ -94,7 +94,7 @@ describe('the hub', () => {
     });
 
     assert.ok(
-      lines.some((line) => line.startsWith('arm-a: new pallet on slot')),
+      lines.some((line) => line.startsWith('arm-a: new pallet')),
       lines.join('\n')
     );
     assert.ok(
@@ -124,7 +124,7 @@ describe('the hub', () => {
     });
 
     assert.ok(
-      lines.some((line) => line.startsWith('arm-b: new pallet on slot')),
+      lines.some((line) => line.startsWith('arm-b: new pallet')),
       lines.join('\n')
     );
     assert.ok(
@@ -164,15 +164,15 @@ describe('the hub', () => {
     run(40, () => {
       lines.push(...log());
 
-      return lines.some((line) => line.includes('no clear path'));
+      return lines.some((line) => line.includes('no path'));
     });
 
     assert.ok(
-      lines.some((line) => line.startsWith('arm-a: arm found wall in its way')),
+      lines.some((line) => line.startsWith('arm-a: wall in the way')),
       lines.join('\n')
     );
     assert.ok(
-      lines.some((line) => line.includes('no clear path for c1')),
+      lines.some((line) => line.includes('no path for c1')),
       lines.join('\n')
     );
   });

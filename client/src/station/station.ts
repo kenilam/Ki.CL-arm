@@ -176,11 +176,7 @@ const create = ({
     const kept = station.queue.filter((order) => order.of !== target.id);
 
     if (!belt && !here(target)) {
-      note(
-        station,
-        `no belt past ${id} toward cell ${target.to.q},${target.to.r}`,
-        'error'
-      );
+      note(station, `no belt to ${target.to.q},${target.to.r}`, 'error');
 
       return;
     }
@@ -295,7 +291,7 @@ const create = ({
             station,
             `leaving ${target.id}`,
             'error',
-            `no belt past ${id} toward cell ${target.to.q},${target.to.r}`
+            `no belt to ${target.to.q},${target.to.r}`
           );
         }
 
@@ -330,7 +326,7 @@ const create = ({
     const belt = layout.belts.find((one) => one.id === line);
 
     if (!belt) {
-      note(station, `no belt ${line} past ${id}`, 'error');
+      note(station, `no belt ${line}`, 'error');
 
       return false;
     }
@@ -344,7 +340,7 @@ const create = ({
     }
 
     station.queue.push({ belt, target, of: null, to });
-    note(station, `queued ${label(target)}`, 'confirm', 'for the belt');
+    note(station, `queued ${label(target)}`, 'confirm');
 
     if (station.job) {
       rethink(station);
