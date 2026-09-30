@@ -22,6 +22,13 @@ if [ "$MOUNTS" = 1 ]; then
   volumes="-v $STORE/cache/kit:/isaac-sim/kit/cache:rw -v $STORE/cache/ov:/isaac-sim/.cache/ov:rw -v $STORE/cache/pip:/isaac-sim/.cache/pip:rw -v $STORE/cache/warp:/isaac-sim/.cache/warp:rw -v $STORE/cache/glcache:/isaac-sim/.cache/nvidia/GLCache:rw -v $STORE/cache/computecache:/isaac-sim/.nv/ComputeCache:rw -v $STORE/logs:/isaac-sim/.nvidia-omniverse/logs:rw -v $STORE/data:/isaac-sim/.local/share/ov/data:rw"
 fi
 
+# ROS 2 for the simulator's bridge: the Jazzy libraries the container bundles, and Fast DDS over UDP only.
+# Its shared-memory transport does not cross between containers run as different users, so without this
+# profile the simulator's topics are listed by other containers but no data ever arrives. The profile is
+# the one the Isaac ROS CLI installs on the machine, so both sides read the same file.
+MIDDLEWARE=/etc/isaac-ros-cli/docker/middleware_profiles
+ros="-e ROS_DISTRO=jazzy -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp -e ROS_DOMAIN_ID=0 -e LD_LIBRARY_PATH=/isaac-sim/exts/isaacsim.ros2.core/jazzy/lib -e FASTRTPS_DEFAULT_PROFILES_FILE=/arm/middleware/rtps_udp_profile.xml -v $MIDDLEWARE:/arm/middleware:ro"
+
 # The script that runs on the machine, as root. %q quotes the command so it survives the trip whole.
 run="$(
   printf '#!/usr/bin/env bash\nCOMMAND=%q\n' "$command"
@@ -30,6 +37,7 @@ mkdir -p $STORE/cache/{kit,ov,pip,warp,glcache,computecache} $STORE/{logs,data}
 chown -R $UID_IN:$UID_IN $STORE/cache $STORE/logs $STORE/data
 exec docker run --rm --gpus all --network host \\
   -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \\
+  $ros \\
   $volumes \\
   --entrypoint bash $IMAGE -c "\$COMMAND"
 EOF
