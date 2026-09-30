@@ -9,23 +9,28 @@ source "$(dirname "$0")/env.sh"
 
 IMAGE="${IMAGE:-nvcr.io/nvidia/isaac-sim:6.0.0}"
 STORE=/var/lib/arm/isaac
+# MOUNTS=0 runs without the cache volumes, to tell a mount problem from a container one.
+MOUNTS="${MOUNTS:-1}"
 
 command="${*:-cd /isaac-sim && sed 's/\"headless\": False/\"headless\": True/' standalone_examples/api/isaacsim.robot.experimental.manipulators/franka/follow_target_with_rmpflow.py > /tmp/follow.py && ./python.sh /tmp/follow.py --test}"
+
+# The 6.0 image runs as user isaac-sim (uid 1234) with its home at /isaac-sim, not root: the caches live
+# under that home, and the folders on the machine have to belong to that uid or nothing gets written.
+UID_IN=1234
+volumes=""
+if [ "$MOUNTS" = 1 ]; then
+  volumes="-v $STORE/cache/kit:/isaac-sim/kit/cache:rw -v $STORE/cache/ov:/isaac-sim/.cache/ov:rw -v $STORE/cache/pip:/isaac-sim/.cache/pip:rw -v $STORE/cache/warp:/isaac-sim/.cache/warp:rw -v $STORE/cache/glcache:/isaac-sim/.cache/nvidia/GLCache:rw -v $STORE/cache/computecache:/isaac-sim/.nv/ComputeCache:rw -v $STORE/logs:/isaac-sim/.nvidia-omniverse/logs:rw -v $STORE/data:/isaac-sim/.local/share/ov/data:rw"
+fi
 
 # The script that runs on the machine, as root. %q quotes the command so it survives the trip whole.
 run="$(
   printf '#!/usr/bin/env bash\nCOMMAND=%q\n' "$command"
   cat <<EOF
-mkdir -p $STORE/cache/{kit,ov,pip,glcache,computecache} $STORE/{logs,data}
+mkdir -p $STORE/cache/{kit,ov,pip,warp,glcache,computecache} $STORE/{logs,data}
+chown -R $UID_IN:$UID_IN $STORE/cache $STORE/logs $STORE/data
 exec docker run --rm --gpus all --network host \\
   -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \\
-  -v $STORE/cache/kit:/isaac-sim/kit/cache:rw \\
-  -v $STORE/cache/ov:/root/.cache/ov:rw \\
-  -v $STORE/cache/pip:/root/.cache/pip:rw \\
-  -v $STORE/cache/glcache:/root/.cache/nvidia/GLCache:rw \\
-  -v $STORE/cache/computecache:/root/.nv/ComputeCache:rw \\
-  -v $STORE/logs:/root/.nvidia-omniverse/logs:rw \\
-  -v $STORE/data:/root/.local/share/ov/data:rw \\
+  $volumes \\
   --entrypoint bash $IMAGE -c "\$COMMAND"
 EOF
 )"

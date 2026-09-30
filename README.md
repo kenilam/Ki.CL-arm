@@ -64,13 +64,15 @@ make gcp.down     # stop; the disk stays. make gcp.delete takes it all away
 
 First boot installs the NVIDIA driver, reboots once, then installs Docker and the NVIDIA container toolkit and proves a container can see the GPU. `make gcp.status` shows it happen. The machine stops itself at 22:00 (`STOP_AT`, `TIMEZONE`) so a forgotten box costs an evening, not a month; it bills whenever it is up.
 
+`make gcp.isaac` runs a command in the Isaac Sim 6.0.0 container on the machine, detached, with the simulator's caches kept under `/var/lib/arm/isaac` between runs; `make gcp.isaac.log` tails its log. With no command it runs the stock Franka follow-target example headless for a fixed number of frames, which is how the GPU and the simulator were proven. Two things the NVIDIA container docs do not say for this version: the image runs as user `isaac-sim` (uid 1234) with its home at `/isaac-sim`, so the cache mounts go under that home, not `/root`, and the folders on the machine have to belong to that uid. Root-owned folders gave "Failed to acquire exclusive lock to data store" and an RTX shader cache failure, and nothing was cached.
+
 With the tunnel open, Ki.CL needs no change: its `/arm` proxy already points at `localhost:3200`, so whatever listens on the machine's 3200 is what the page's arms talk to. For now that can be this repo's own dev server; later it is the bridge. The Isaac Sim viewport streams over WebRTC, which needs UDP, and IAP is TCP only; Tailscale on the machine is the plan for when we want to look at the sim itself.
 
 ## Plan
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
 2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps the floor page and everything only a page needs. Workers load through Ki.CL's `/arm` proxy.
-3. **GCP.** Done: the machine is up in `us-central1-c` with Isaac Sim 6.0.0 pulled. Next: a stock arm running headless in it, and the Isaac ROS containers.
+3. **GCP.** Done: the machine is up in `us-central1-c`, Isaac Sim 6.0.0 runs a stock Franka headless on its L4 with caches persisted. Isaac ROS comes with the bridge.
 4. **Bridge, C++.** An `rclcpp` node with a WebSocket server, speaking this schema. Each `move` becomes a cuMotion goal through MoveIt, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop. `/joint_states` comes back as `Telemetry`. `client/src/controller/run.ts` is the spec for its behaviour.
 5. **Sim content.** The arm as a URDF from the link lengths in `client/src/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.
 6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.
