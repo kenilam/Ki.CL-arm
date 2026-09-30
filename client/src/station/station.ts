@@ -368,37 +368,67 @@ const create = ({
    * plans it from wherever it is. No homing first: the planner starts from
    * the arm's own telemetry, so a swing home and back would only be a show.
    */
+  /** A link dialled but not yet taken over: closed if another comes first. */
+  let dialling: { link: Link; stop: () => void } | null = null;
+
+  /**
+   * Puts the arm on `to` instead of the link it has now. Make before break:
+   * the old arm is held where it is while the new link dials in, which over
+   * a tunnel takes seconds, and the handover is made on the new arm's first
+   * telemetry, so the picture never freezes or jumps. Then a case on the old
+   * pad goes back where it stood, the order goes back to the front of the
+   * queue, the new arm is seeded with where the old one stood, and it plans
+   * on from there. No homing first: the planner starts from telemetry.
+   */
   const relink = (to: Link) => {
-    const stood = station.telemetry?.joints;
+    dialling?.stop();
+    dialling?.link.close();
+    station.link.send({ type: 'hold', arm: id });
 
-    unlisten();
-    station.link.close();
-    station.link = to;
-    unlisten = station.link.listen((report) => handle(station, report));
+    const stop = to.listen((report) => {
+      if (report.type !== 'telemetry') {
+        return;
+      }
 
-    const { holding, job } = station;
+      stop();
+      dialling = null;
 
-    if (holding) {
-      station.cases[holding.id] = holding;
-      station.holding = null;
-    }
+      const stood = station.telemetry?.joints;
 
-    if (job) {
-      const { belt, of, target, to: bound } = job;
+      unlisten();
+      station.link.close();
+      station.link = to;
+      unlisten = station.link.listen((each) => handle(station, each));
 
-      station.queue.unshift({ belt, of, target, to: bound });
-      station.job = null;
-    }
+      const { holding, job } = station;
 
-    greet();
-    station.homing = false;
+      if (holding) {
+        station.cases[holding.id] = holding;
+        station.holding = null;
+      }
 
-    // The new arm stands where the old one did, so the picture does not jump and its first plan starts from there.
-    if (stood) {
-      station.link.send({ type: 'seed', arm: id, joints: stood });
-    }
+      if (job) {
+        const { belt, of, target, to: bound } = job;
 
-    show(station);
+        station.queue.unshift({ belt, of, target, to: bound });
+        station.job = null;
+      }
+
+      // Stopped and reset once more, now that the station listens: the arm's answers land here.
+      greet();
+      station.homing = false;
+
+      if (stood) {
+        station.link.send({ type: 'seed', arm: id, joints: stood });
+      }
+
+      show(station);
+    });
+
+    dialling = { link: to, stop };
+    // Any command boots the arm on a bridge, and its telemetry then says it is there.
+    to.send({ type: 'stop', arm: id });
+    to.send({ type: 'reset', arm: id });
   };
 
   const load = (catalogue: Box[]) => {
@@ -694,6 +724,8 @@ const create = ({
   const close = () => {
     unlisten();
     station.link.close();
+    dialling?.stop();
+    dialling?.link.close();
   };
 
   return {
