@@ -153,15 +153,22 @@ pub fn run(arm: &mut Arm, dt: f64) {
             }
         }
         Instruction::Pick { case } | Instruction::Place { case } => {
+            let wanted = if picking { 1.0 } else { 0.0 };
+
             // The vacuum switches only once the physical arm is at the pose too: switched on the model's say-so, it
             // would let a case go from wherever the physics still are.
-            if arrived(arm, FOLLOWED, BLOCKED) {
-                arm.goal.grip = if picking { 1.0 } else { 0.0 };
+            if arm.goal.grip != wanted && arrived(arm, FOLLOWED, BLOCKED) {
+                arm.goal.grip = wanted;
             }
 
             arm.drive = servo(&arm.drive, &arm.goal, dt);
 
-            if arrived(arm, FOLLOWED, BLOCKED) && settled(&arm.drive.joints, &arm.goal, None) {
+            // Switched, the step is done once the arm has come to rest, wherever the contact left it: a case taken
+            // may have shoved the pad, and a case let go may have dropped the pad a little.
+            if arm.goal.grip == wanted
+                && settled(&arm.drive.joints, &arm.goal, None)
+                && (arrived(arm, FOLLOWED, PLACING) || arm.stalled)
+            {
                 arm.holding = picking.then_some(case);
                 complete(arm);
             }
