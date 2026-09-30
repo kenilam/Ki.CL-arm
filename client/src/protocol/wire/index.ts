@@ -17,6 +17,7 @@ type Scene = {
   boxes: Box[];
   cases?: Box[];
   pallets?: Box[];
+  belts?: Box[];
 };
 
 /** Everything that goes from the hub to the arms over one socket. */
@@ -123,6 +124,7 @@ const encodeToArm = (message: ToArm) =>
                 boxes: message.boxes,
                 cases: message.cases ?? [],
                 pallets: message.pallets ?? [],
+                belts: message.belts ?? [],
               },
             }
           : { case: 'command', value: command(message) },
@@ -205,6 +207,7 @@ const decodeToArm = (bytes: Uint8Array): ToArm => {
         ...(body.value.pallets.length && {
           pallets: body.value.pallets.map(box),
         }),
+        ...(body.value.belts.length && { belts: body.value.belts.map(box) }),
       };
     default:
       throw new Error('A message to an arm carries nothing');

@@ -138,8 +138,8 @@ const build = (cells: Cell[], lines: Line[], link?: string) => {
 
       return found;
     },
-    feed: (arm, boxes, cases, pallets) =>
-      feeds.get(arm)?.(boxes, cases, pallets),
+    feed: (arm, boxes, cases, pallets, belts) =>
+      feeds.get(arm)?.(boxes, cases, pallets, belts),
   });
   last = performance.now();
   shown = '';

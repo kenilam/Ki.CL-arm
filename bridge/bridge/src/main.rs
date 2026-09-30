@@ -300,9 +300,14 @@ async fn receive(bytes: &[u8], arms: &Shared, ros: &Ros) {
 #[cfg(feature = "ros2")]
 fn stage(id: &str, scene: &arm_wire::Scene, ros: &Ros) {
     if let Some(ros) = ros
-        && (!scene.cases.is_empty() || !scene.pallets.is_empty())
+        && (!scene.cases.is_empty() || !scene.pallets.is_empty() || !scene.belts.is_empty())
     {
-        ros.cell(id, &convert::obstacles(scene.cases.clone()), &convert::obstacles(scene.pallets.clone()));
+        ros.cell(
+            id,
+            &convert::obstacles(scene.cases.clone()),
+            &convert::obstacles(scene.pallets.clone()),
+            &convert::obstacles(scene.belts.clone()),
+        );
     }
 }
 
