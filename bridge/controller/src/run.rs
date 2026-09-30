@@ -125,10 +125,15 @@ pub fn run(arm: &mut Arm, dt: f64) {
             }
         }
         Instruction::Pick { case } | Instruction::Place { case } => {
-            arm.goal.grip = if picking { 1.0 } else { 0.0 };
+            // The vacuum switches only once the physical arm is at the pose too: switched on the model's say-so, it
+            // would let a case go from wherever the physics still are.
+            if arrived(arm, FOLLOWED) {
+                arm.goal.grip = if picking { 1.0 } else { 0.0 };
+            }
+
             arm.drive = servo(&arm.drive, &arm.goal, dt);
 
-            if settled(&arm.drive.joints, &arm.goal, None) {
+            if arrived(arm, FOLLOWED) && settled(&arm.drive.joints, &arm.goal, None) {
                 arm.holding = picking.then_some(case);
                 complete(arm);
             }
