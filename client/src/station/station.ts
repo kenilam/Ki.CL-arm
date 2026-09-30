@@ -128,7 +128,6 @@ const create = ({
   const station = boot(id, layout, link);
   let unlisten = link.listen((report) => handle(station, report));
   /** A link to put the arm on instead, once the arm is between jobs and holding nothing. */
-  let coming: Link | null = null;
   const claims = new Map<string, Claim>();
   const taken: number[] = [];
   /** Pallets left where they are for want of a belt, so the log says so once. */
@@ -363,27 +362,35 @@ const create = ({
   const wake = () => greet();
 
   /**
-   * Puts the arm on `to` instead of the link it has now. Not straight away:
-   * an arm mid-move with a case on the pad has state the arm on the other
-   * end knows nothing of, so the swap waits for the moment between jobs,
-   * and the world carries on across it.
+   * Puts the arm on `to` instead of the link it has now, at once. The job
+   * under way was the old arm's: a case on its pad goes back where it
+   * stood, the order goes back to the front of the queue, and the new arm
+   * plans it from wherever it is. No homing first: the planner starts from
+   * the arm's own telemetry, so a swing home and back would only be a show.
    */
   const relink = (to: Link) => {
-    coming?.close();
-    coming = to;
-  };
-
-  const swap = () => {
-    if (!coming || station.job || station.holding) {
-      return;
-    }
-
     unlisten();
     station.link.close();
-    station.link = coming;
-    coming = null;
+    station.link = to;
     unlisten = station.link.listen((report) => handle(station, report));
+
+    const { holding, job } = station;
+
+    if (holding) {
+      station.cases[holding.id] = holding;
+      station.holding = null;
+    }
+
+    if (job) {
+      const { belt, of, target, to: bound } = job;
+
+      station.queue.unshift({ belt, of, target, to: bound });
+      station.job = null;
+    }
+
     greet();
+    station.homing = false;
+    show(station);
   };
 
   const load = (catalogue: Box[]) => {
@@ -600,7 +607,6 @@ const create = ({
     station.clock += dt;
     station.riders = new Map(riders.map((rider) => [rider.id, rider]));
     station.moving = new Set(moving);
-    swap();
 
     if (station.unsettled && station.clock - station.moved >= SETTLE) {
       station.unsettled = false;
@@ -680,7 +686,6 @@ const create = ({
   const close = () => {
     unlisten();
     station.link.close();
-    coming?.close();
   };
 
   return {

@@ -216,7 +216,7 @@ describe('a station', () => {
     );
   });
 
-  test('carries on with a new arm when relinked between cases', () => {
+  test('carries on with a new arm as soon as it is relinked', () => {
     const { station, wire, board: made, target } = setup(['1rf', '1lf']);
     const second = local('arm-a');
     const heard: string[] = [];
