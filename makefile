@@ -82,9 +82,9 @@ bridge.test:
 bridge.run:
 	cd bridge && cargo run -p arm-bridge -- --listen 127.0.0.1:3201
 
-# Builds the bridge on the machine and runs it there on :3200, restarting with the machine.
+# Builds the bridge on the machine and runs it there: `arm` on :3200, or `arm-dev` on :3201 with STAGE=dev.
 gcp.bridge:
 	gcp/bridge.sh
 
 gcp.bridge.log:
-	gcp/ssh.sh sudo docker logs --tail 40 arm-bridge
+	gcp/bridge-log.sh

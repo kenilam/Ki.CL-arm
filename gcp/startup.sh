@@ -77,7 +77,7 @@ cat > /usr/local/bin/arm-idle <<'WATCH'
 IDLE_MINUTES=${IDLE_MINUTES:-30}
 STAMP=/run/arm-idle-since
 busy=0
-ss -Htn state established '( sport = :3200 )' | grep -q . && busy=1
+ss -Htn state established '( sport = :3200 or sport = :3201 )' | grep -q . && busy=1
 ss -Htn state established '( sport = :22 )' | grep -q . && busy=1
 if [ "$busy" = 1 ]; then rm -f "$STAMP"; exit 0; fi
 [ -f "$STAMP" ] || date +%s > "$STAMP"

@@ -79,16 +79,17 @@ With the tunnel open, Ki.CL needs no change: its `/arm` proxy already points at 
 ```bash
 make bridge.test    # cargo test across the workspace
 make bridge.run     # the bridge here, on 127.0.0.1:3201
-make gcp.bridge     # build it on the machine in Docker and run it there on :3200, restarting with the machine
-make gcp.bridge.log
-make gcp.tunnel     # localhost:3300 -> the machine's 3200
+make gcp.bridge     # build it on the machine in Docker and run it there as `arm` on :3200, restarting with the machine
+STAGE=dev make gcp.bridge   # the same from this checkout, as `arm-dev` on :3201
+make gcp.bridge.log         # STAGE picks which
+make gcp.tunnel     # localhost:3300 -> the machine's 3200; STAGE=dev -> 3201
 ```
 
 `bridge/Dockerfile.ros2` is the draft for the ROS 2 flavour: the Isaac ROS development image as base, Rust and `r2r` on top, built with ROS sourced. Isaac ROS 5.0 moved its Docker tooling out of `isaac_ros_common` into the `isaac-ros-cli` apt package (`sudo isaac-ros init docker`, `isaac-ros activate`), which the machine's startup script installs; the base image's name comes from there.
 
 Rust over C++ because the bridge's own work is sockets and protobuf, where Rust's libraries are the best available, and because of that shared controller. ROS 2 is reached with `r2r`, and MoveIt through its action interfaces, which need no client library.
 
-With the tunnel up, set `KICL_ARM_BRIDGE_URL=http://localhost:3300` in Ki.CL's `.env`: its dev server sends `/arm/link` there and everything else about the page stays local, so the Physical AI switch puts the page's arms on the GCP machine.
+Two bridges share the one machine: `arm` for prod, built from `main`, and `arm-dev` for dev, built from whatever is checked out. Environments live in the containers and, later, in the two gateways in front of them; the GPU is one and Isaac Sim is one world, so dev waits when prod has it. With the tunnel up, set `KICL_ARM_BRIDGE_URL=http://localhost:3300` in Ki.CL's `.env`: its dev server sends `/arm/link` there and everything else about the page stays local, so the Physical AI switch puts the page's arms on the GCP machine.
 
 ## Going public: the gateway
 

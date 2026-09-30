@@ -7,14 +7,17 @@ source "$(dirname "$0")/env.sh"
 
 gcloud services enable compute.googleapis.com iap.googleapis.com secretmanager.googleapis.com --project "$PROJECT" >/dev/null
 
+allow="tcp:22,$(echo "$PORTS" | sed 's/\([0-9]*\)/tcp:\1/g')"
 if ! gcloud compute firewall-rules describe "$TAG-iap" --project "$PROJECT" >/dev/null 2>&1; then
-  echo "firewall: $TAG-iap (ssh and $PORT, from IAP only)"
+  echo "firewall: $TAG-iap (ssh and $PORTS, from IAP only)"
   gcloud compute firewall-rules create "$TAG-iap" \
     --project "$PROJECT" \
     --direction INGRESS \
     --source-ranges "$IAP_RANGE" \
     --target-tags "$TAG" \
-    --allow "tcp:22,tcp:$PORT" >/dev/null
+    --allow "$allow" >/dev/null
+else
+  gcloud compute firewall-rules update "$TAG-iap" --project "$PROJECT" --allow "$allow" >/dev/null
 fi
 
 # No public address means no way out either: apt, Docker's and NVIDIA's registries all sit behind this.
