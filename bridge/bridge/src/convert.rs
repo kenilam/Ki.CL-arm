@@ -65,6 +65,7 @@ pub fn command(from: wire::Command) -> Option<ctl::Command> {
 
             ctl::Command::Seed {
                 arm,
+                holding: s.holding,
                 joints: ctl::Joints {
                     yaw: j.yaw,
                     shoulder: j.shoulder,

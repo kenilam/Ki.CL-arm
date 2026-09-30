@@ -478,6 +478,8 @@ const inWay = (station: Station, target: string) =>
 export {
   at,
   cancel,
+  current,
+  dispatch,
   gates,
   inWay,
   next,

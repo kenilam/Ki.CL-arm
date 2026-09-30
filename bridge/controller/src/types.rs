@@ -72,7 +72,7 @@ pub enum Command {
     Stop { arm: String },
     Reset { arm: String },
     Open { arm: String, gate: String },
-    Seed { arm: String, joints: Joints },
+    Seed { arm: String, joints: Joints, holding: Option<String> },
 }
 
 impl Command {

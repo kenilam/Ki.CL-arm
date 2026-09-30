@@ -24,7 +24,18 @@ import type { Board, Capacity, Target } from '../hub/board';
 import { ROOM, SETTLE } from './constants';
 
 // Partials
-import { at, gates, next, replan, rethink, retry, spread, stop } from './jobs';
+import {
+  at,
+  current,
+  dispatch,
+  gates,
+  next,
+  replan,
+  rethink,
+  retry,
+  spread,
+  stop,
+} from './jobs';
 import { transfer } from './motion';
 import { clears, instructions } from './planner';
 import { handle } from './reports';
@@ -393,35 +404,33 @@ const create = ({
       stop();
       dialling = null;
 
+      // Where the old arm stood and how far into its job it was, before the greet clears the telemetry.
       const stood = station.telemetry?.joints;
+      const step = current(station) ?? 0;
+      const { holding, job } = station;
 
       unlisten();
       station.link.close();
       station.link = to;
       unlisten = station.link.listen((each) => handle(station, each));
 
-      const { holding, job } = station;
-
-      if (holding) {
-        station.cases[holding.id] = holding;
-        station.holding = null;
-        // The pad stands on that case now, so the next move rises before it swings.
-        station.touching = true;
-      }
-
-      if (job) {
-        const { belt, of, target, to: bound } = job;
-
-        station.queue.unshift({ belt, of, target, to: bound });
-        station.job = null;
-      }
-
       // Stopped and reset once more, now that the station listens: the arm's answers land here.
       greet();
       station.homing = false;
 
+      // The new arm stands where the old one did, holding what it held, and carries the same job on from
+      // the step the old one was on: no case put back, no swing home, no planning again.
       if (stood) {
-        station.link.send({ type: 'seed', arm: id, joints: stood });
+        station.link.send({
+          type: 'seed',
+          arm: id,
+          joints: stood,
+          holding: holding?.id ?? null,
+        });
+      }
+
+      if (job) {
+        dispatch(station, job, job.moves, job.skip + step);
       }
 
       show(station);
