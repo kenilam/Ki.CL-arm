@@ -1,5 +1,5 @@
 // Protocol
-import type { Box, Link } from '../protocol';
+import type { Box, Feed, Link } from '../protocol';
 
 // Grid
 import {
@@ -22,10 +22,13 @@ import {
   on,
   reaches,
   stretch,
+  PALLET,
+  type Layout,
 } from '../grid/layout';
 
 // Station
-import { ROOM } from '../station/constants';
+import { DECK, ROOM } from '../station/constants';
+import { extent } from '../station/world';
 import type { Event, Rider } from '../station/events';
 import type { Case } from '../station/spec';
 import { create as station, type Station } from '../station/station';
@@ -61,7 +64,7 @@ const create = ({
   lines: Line[];
   connect: (arm: string) => Link;
   /** Hands an arm's sensors the boxes round it, in its own frame: the simulation's side door. */
-  feed?: (arm: string, boxes: Box[]) => void;
+  feed?: (arm: string, ...scene: Parameters<Feed>) => void;
 }) => {
   const stations = new Map<string, Station>();
   const targets = new Map<string, Target>();
@@ -278,6 +281,21 @@ const create = ({
     }));
   };
 
+  /** Every pallet in a layout as a box in the arm's frame, deck included: the buffer and the ones on slots. */
+  const pallets = ({ buffer, pallets: standing }: Layout): Box[] =>
+    [
+      ...standing.map(({ id, at }) => ({ id, at })),
+      ...(buffer ? [{ id: 'buffer', at: buffer }] : []),
+    ].map(({ id, at: [x, y, z] }) => ({
+      id: `pallet:${id}`,
+      min: { x: x - PALLET.size[0] / 2, y, z: z - PALLET.size[2] / 2 },
+      max: {
+        x: x + PALLET.size[0] / 2,
+        y: y + DECK,
+        z: z + PALLET.size[2] / 2,
+      },
+    }));
+
   /** The obstacles standing on a line's belt. */
   const blocking = (found: Geometry) =>
     blocks.filter((box) => covers(found, box));
@@ -469,6 +487,16 @@ const create = ({
       for (const event of one.drain()) {
         if (event.type === 'alarm') {
           alarms.add(one.id);
+        }
+
+        // The cell as it stands, for a simulator staging it as physics: every case as its box, and the pallets they stand on.
+        if (event.type === 'cell') {
+          feed(
+            one.id,
+            shifted(hex),
+            event.cases.map((one) => ({ id: one.id, ...extent(one) })),
+            pallets(one.layout)
+          );
         }
 
         if (event.type === 'calm') {

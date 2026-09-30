@@ -1,5 +1,5 @@
 // Protocol
-import type { Box } from '../protocol';
+import type { Box, Feed } from '../protocol';
 
 // Controller
 import { connect } from '../controller/link';
@@ -69,7 +69,7 @@ let shown = '';
 let loop: ReturnType<typeof setInterval> | null = null;
 /** What each line last carried, as the page was told it. */
 const rode = new Map<string, string>();
-const feeds = new Map<string, (boxes: Box[]) => void>();
+const feeds = new Map<string, Feed>();
 
 /** The board, as far as the page needs to tell it apart from last time. */
 const stamp = (targets: Target[]) =>
@@ -135,7 +135,8 @@ const build = (cells: Cell[], lines: Line[], link?: string) => {
 
       return found;
     },
-    feed: (arm, boxes) => feeds.get(arm)?.(boxes),
+    feed: (arm, boxes, cases, pallets) =>
+      feeds.get(arm)?.(boxes, cases, pallets),
   });
   last = performance.now();
   shown = '';

@@ -1,5 +1,5 @@
 // Protocol
-import type { Box, Link, Report } from '../protocol';
+import type { Feed, Link, Report } from '../protocol';
 import { decodeReport, encodeToArm, type ToArm } from '../protocol/wire';
 
 /** How long after the socket drops before it is dialled again, in milliseconds. */
@@ -95,7 +95,7 @@ const dial = (address: string) => {
 
   return {
     url,
-    link: (arm: string): Link & { feed: (boxes: Box[]) => void } => {
+    link: (arm: string): Link & { feed: Feed } => {
       const own = new Set<(report: Report) => void>();
 
       handlers.set(arm, own);
@@ -103,7 +103,8 @@ const dial = (address: string) => {
       return {
         arm,
         send,
-        feed: (boxes) => send({ type: 'scene', arm, boxes }),
+        feed: (boxes, cases, pallets) =>
+          send({ type: 'scene', arm, boxes, cases, pallets }),
         listen: (handler) => {
           own.add(handler);
 

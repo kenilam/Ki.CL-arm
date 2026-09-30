@@ -11,14 +11,23 @@ use std::time::Duration;
 use arm_controller::Joints;
 use futures_util::StreamExt;
 use r2r::sensor_msgs::msg::JointState;
+use r2r::std_msgs::msg::{Bool, String as Text};
 use r2r::{Node, Publisher, QosProfile};
 use tracing::{info, warn};
 
 const NAMES: [&str; 5] = ["yaw", "shoulder", "elbow", "wrist", "roll"];
 
+/// What the bridge says to one arm's simulator, besides joint targets.
+struct Out {
+    joints: Publisher<JointState>,
+    /// The cell as the hub sees it, as JSON; the simulator stages cases and pallets from it.
+    cell: Publisher<Text>,
+    vacuum: Publisher<Bool>,
+}
+
 pub struct Ros {
     node: Arc<Mutex<Node>>,
-    publishers: Mutex<HashMap<String, Publisher<JointState>>>,
+    publishers: Mutex<HashMap<String, Out>>,
     /// The joints last reported by each arm's physics, by arm id.
     measured: Arc<Mutex<HashMap<String, Joints>>>,
 }
@@ -73,20 +82,26 @@ impl Ros {
         }
 
         let name = topic(id);
-        let (publisher, mut states) = {
+        let (out, mut states) = {
             let mut node = self.node.lock().unwrap();
+            // The cell and the vacuum are state, not a stream: a simulator that starts late gets the last of each.
+            let latched = QosProfile::default().transient_local();
 
             (
-                node.create_publisher::<JointState>(
-                    &format!("/{name}/joint_commands"),
-                    QosProfile::default(),
-                )?,
+                Out {
+                    joints: node.create_publisher::<JointState>(
+                        &format!("/{name}/joint_commands"),
+                        QosProfile::default(),
+                    )?,
+                    cell: node.create_publisher::<Text>(&format!("/{name}/cell"), latched.clone())?,
+                    vacuum: node.create_publisher::<Bool>(&format!("/{name}/vacuum"), latched)?,
+                },
                 node.subscribe::<JointState>(&format!("/{name}/joint_states"), QosProfile::default())?,
             )
         };
 
-        publishers.insert(id.to_owned(), publisher);
-        info!(arm = id, "on /{name}/joint_commands and /{name}/joint_states");
+        publishers.insert(id.to_owned(), out);
+        info!(arm = id, "on /{name}/joint_commands, /{name}/cell, /{name}/vacuum and /{name}/joint_states");
 
         let measured = self.measured.clone();
         let id = id.to_owned();
@@ -105,9 +120,10 @@ impl Ros {
         Ok(())
     }
 
-    /// Sends `id` the joint targets its controller wants.
+    /// Sends `id` the joint targets its controller wants, and whether its vacuum is on.
     pub fn command(&self, id: &str, joints: &Joints) {
-        let Some(publisher) = self.publishers.lock().unwrap().get(id).cloned() else {
+        let publishers = self.publishers.lock().unwrap();
+        let Some(out) = publishers.get(id) else {
             return;
         };
         let message = JointState {
@@ -116,8 +132,36 @@ impl Ros {
             ..Default::default()
         };
 
-        if let Err(error) = publisher.publish(&message) {
+        if let Err(error) = out.joints.publish(&message) {
             warn!(arm = id, %error, "could not publish joint targets");
+        }
+
+        if let Err(error) = out.vacuum.publish(&Bool { data: joints.grip > 0.5 }) {
+            warn!(arm = id, %error, "could not publish the vacuum");
+        }
+    }
+
+    /// Tells `id`'s simulator what stands in its cell: cases and pallets as boxes in the arm's frame, as JSON.
+    pub fn cell(&self, id: &str, cases: &[arm_controller::Obstacle], pallets: &[arm_controller::Obstacle]) {
+        let publishers = self.publishers.lock().unwrap();
+        let Some(out) = publishers.get(id) else {
+            return;
+        };
+        let boxes = |list: &[arm_controller::Obstacle]| {
+            list.iter()
+                .map(|one| {
+                    format!(
+                        r#"{{"id":"{}","min":[{},{},{}],"max":[{},{},{}]}}"#,
+                        one.id, one.min.x, one.min.y, one.min.z, one.max.x, one.max.y, one.max.z
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        let data = format!(r#"{{"cases":[{}],"pallets":[{}]}}"#, boxes(cases), boxes(pallets));
+
+        if let Err(error) = out.cell.publish(&Text { data }) {
+            warn!(arm = id, %error, "could not publish the cell");
         }
     }
 

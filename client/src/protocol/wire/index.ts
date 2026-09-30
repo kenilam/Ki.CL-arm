@@ -10,8 +10,14 @@ import type { Report, State, Telemetry } from '../reports';
 // Generated
 import * as Pb from './gen/kicl/arm/v1/arm_pb';
 
-/** What is physically around an arm, for a simulated arm's sensors to meet. */
-type Scene = { type: 'scene'; arm: string; boxes: Box[] };
+/** What is physically around an arm: the obstacles its sensors would meet, and the cases and pallets in its cell for a simulator that stages them. */
+type Scene = {
+  type: 'scene';
+  arm: string;
+  boxes: Box[];
+  cases?: Box[];
+  pallets?: Box[];
+};
 
 /** Everything that goes from the hub to the arms over one socket. */
 type ToArm = Command | Scene;
@@ -112,7 +118,12 @@ const encodeToArm = (message: ToArm) =>
         message.type === 'scene'
           ? {
               case: 'scene',
-              value: { arm: message.arm, boxes: message.boxes },
+              value: {
+                arm: message.arm,
+                boxes: message.boxes,
+                cases: message.cases ?? [],
+                pallets: message.pallets ?? [],
+              },
             }
           : { case: 'command', value: command(message) },
     })
@@ -189,16 +200,22 @@ const decodeToArm = (bytes: Uint8Array): ToArm => {
       return {
         type: 'scene',
         arm: body.value.arm,
-        boxes: body.value.boxes.map(({ id, min, max }) => ({
-          id,
-          min: point(min ?? create(Pb.PointSchema)),
-          max: point(max ?? create(Pb.PointSchema)),
-        })),
+        boxes: body.value.boxes.map(box),
+        ...(body.value.cases.length && { cases: body.value.cases.map(box) }),
+        ...(body.value.pallets.length && {
+          pallets: body.value.pallets.map(box),
+        }),
       };
     default:
       throw new Error('A message to an arm carries nothing');
   }
 };
+
+const box = ({ id, min, max }: Pb.Box): Box => ({
+  id,
+  min: point(min ?? create(Pb.PointSchema)),
+  max: point(max ?? create(Pb.PointSchema)),
+});
 
 const telemetry = (one: Telemetry): Pb.Telemetry =>
   create(Pb.TelemetrySchema, {

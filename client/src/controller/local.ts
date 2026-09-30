@@ -1,5 +1,5 @@
 // Protocol
-import type { Box, Link, Report } from '../protocol';
+import type { Feed, Link, Report } from '../protocol';
 
 // Partials
 import { create } from './controller';
@@ -14,7 +14,7 @@ import { REPORT, TICK } from './constants';
  */
 const local = (
   arm: string
-): Link & { feed: (boxes: Box[]) => void; tick: (dt: number) => void } => {
+): Link & { feed: Feed; tick: (dt: number) => void } => {
   const controller = create({ arm });
   const handlers = new Set<(report: Report) => void>();
   let owed = 0;

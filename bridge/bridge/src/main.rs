@@ -288,7 +288,23 @@ async fn receive(bytes: &[u8], arms: &Shared, ros: &Ros) {
             Some(command) => guard.arm(&id).command(command),
             None => warn!("a command asked nothing"),
         },
-        Some(Body::Scene(scene)) => guard.arm(&id).feed(convert::obstacles(scene.boxes)),
+        Some(Body::Scene(scene)) => {
+            stage(&id, &scene, ros);
+            guard.arm(&id).feed(convert::obstacles(scene.boxes));
+        }
         None => {}
     }
 }
+
+/// Over ROS, the cases and pallets in a scene go to the arm's simulator, which stages them as physics.
+#[cfg(feature = "ros2")]
+fn stage(id: &str, scene: &arm_wire::Scene, ros: &Ros) {
+    if let Some(ros) = ros
+        && (!scene.cases.is_empty() || !scene.pallets.is_empty())
+    {
+        ros.cell(id, &convert::obstacles(scene.cases.clone()), &convert::obstacles(scene.pallets.clone()));
+    }
+}
+
+#[cfg(not(feature = "ros2"))]
+fn stage(_id: &str, _scene: &arm_wire::Scene, _ros: &Ros) {}
