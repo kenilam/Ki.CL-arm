@@ -82,3 +82,7 @@ pub const STILL: f64 = 0.005;
 /// pad pressed onto a case top comes no closer however long it tries. Measured at the pad, not the joints: small
 /// joint errors add up to a pad far from a case, and a vacuum switched on there takes nothing.
 pub const BLOCKED: f64 = 0.05;
+
+/// The same, for the move down onto a place: a case that has come to rest on something short of the planned spot is
+/// down, whatever the plan thought stood there, and holding it pressed there helps nothing.
+pub const PLACING: f64 = 0.15;
