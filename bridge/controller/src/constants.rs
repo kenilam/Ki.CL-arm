@@ -71,3 +71,13 @@ pub const PASSING: f64 = 0.05;
 /// How close an arm that reports its own joints must be to the goal, in radians, for a step to count as reached.
 /// Looser than `SETTLED`: a physical arm sags under gravity and trails a moving target by a little.
 pub const FOLLOWED: f64 = 0.02;
+
+/// How long the physical joints must go without moving, in seconds, to count as stopped short of the goal.
+pub const STALLED: f64 = 0.5;
+
+/// How little the physical joints may move over `STALLED`, in radians, and still count as stopped.
+pub const STILL: f64 = 0.002;
+
+/// How close stopped joints must be to the goal, in radians, for the stop to count as arrival: a pad pressed onto
+/// a case top, or a joint at the end of its give, comes no closer however long it tries.
+pub const BLOCKED: f64 = 0.1;
