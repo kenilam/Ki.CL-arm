@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The machine, from nothing: APIs on, a firewall rule that lets only IAP in,
-# the instance with no public address, and a nightly stop. Run again, it
+# NAT so the machine can reach out, the instance with no public address, and
+# a nightly stop. Run again, it
 # starts a stopped machine and leaves the rest alone.
 source "$(dirname "$0")/env.sh"
 
@@ -14,6 +15,18 @@ if ! gcloud compute firewall-rules describe "$TAG-iap" --project "$PROJECT" >/de
     --source-ranges "$IAP_RANGE" \
     --target-tags "$TAG" \
     --allow "tcp:22,tcp:$PORT" >/dev/null
+fi
+
+# No public address means no way out either: apt, Docker's and NVIDIA's registries all sit behind this.
+if ! gcloud compute routers describe "$TAG-router" --region "$REGION" --project "$PROJECT" >/dev/null 2>&1; then
+  echo "nat: $TAG-nat for $REGION"
+  gcloud compute routers create "$TAG-router" --network default --region "$REGION" --project "$PROJECT" >/dev/null
+  gcloud compute routers nats create "$TAG-nat" \
+    --router "$TAG-router" \
+    --region "$REGION" \
+    --project "$PROJECT" \
+    --auto-allocate-nat-external-ips \
+    --nat-all-subnet-ip-ranges >/dev/null
 fi
 
 if ! gcloud compute resource-policies describe "$TAG-stop" --region "$REGION" --project "$PROJECT" >/dev/null 2>&1; then

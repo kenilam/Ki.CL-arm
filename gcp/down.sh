@@ -8,6 +8,7 @@ if [ "${1:-}" = "--delete" ]; then
   gcloud compute instances delete "$NAME" --zone "$ZONE" --project "$PROJECT" --quiet
   gcloud compute resource-policies delete "$TAG-stop" --region "$REGION" --project "$PROJECT" --quiet || true
   gcloud compute firewall-rules delete "$TAG-iap" --project "$PROJECT" --quiet || true
+  gcloud compute routers delete "$TAG-router" --region "$REGION" --project "$PROJECT" --quiet || true
   exit 0
 fi
 
