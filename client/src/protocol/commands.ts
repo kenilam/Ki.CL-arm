@@ -17,6 +17,6 @@ type Command =
   | { type: 'stop'; arm: string }
   | { type: 'reset'; arm: string }
   | { type: 'open'; arm: string; gate: string }
-  | { type: 'seed'; arm: string; joints: Joints };
+  | { type: 'seed'; arm: string; joints: Joints; holding: string | null };
 
 export type { Command };

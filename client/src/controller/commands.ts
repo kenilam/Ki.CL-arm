@@ -110,7 +110,9 @@ const command = (arm: Arm, received: Command) => {
       }
 
       arm.drive = rest(received.joints);
-      arm.goal = received.joints;
+      arm.goal = { ...received.joints, grip: received.holding ? 1 : 0 };
+      arm.drive.joints.grip = arm.goal.grip;
+      arm.holding = received.holding;
       arm.setpoint = {
         at: forward(received.joints),
         facing: bearing(received.joints),

@@ -3,7 +3,7 @@
 use crate::kinematics::{bearing, forward};
 use crate::servo::rest;
 use crate::state::{Arm, adopt, gripping, say};
-use crate::types::{Cause, Command, Plan, Pose, Report, State};
+use crate::types::{Cause, Command, Joints, Plan, Pose, Report, State};
 
 /// Takes a plan from the hub, or says why not. A plan that arrives mid-grip waits for the grip to settle; one that arrives during an operator's hold is taken but stays held, while a sensor's hold ends with a new plan.
 fn load(arm: &mut Arm, plan: Plan) {
@@ -85,14 +85,17 @@ pub fn command(arm: &mut Arm, received: Command) {
         Command::Open { gate, .. } => {
             arm.opened.insert(gate);
         }
-        Command::Seed { joints, .. } => {
+        Command::Seed { joints, holding, .. } => {
             // Only an arm with nothing under way: its plan's moves were made from where it stood.
             if arm.plan.is_some() && arm.state == State::Running {
                 return;
             }
 
-            arm.drive = rest(joints);
-            arm.goal = joints;
+            let grip = if holding.is_some() { 1.0 } else { 0.0 };
+
+            arm.drive = rest(Joints { grip, ..joints });
+            arm.goal = Joints { grip, ..joints };
+            arm.holding = holding;
             arm.setpoint = Pose { at: forward(&joints), facing: bearing(&joints) };
         }
     }

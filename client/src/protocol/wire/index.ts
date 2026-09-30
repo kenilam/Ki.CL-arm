@@ -106,7 +106,10 @@ const command = (one: Command): Pb.Command => {
     case 'seed':
       return create(Pb.CommandSchema, {
         arm: one.arm,
-        type: { case: 'seed', value: { joints: one.joints } },
+        type: {
+          case: 'seed',
+          value: { joints: one.joints, holding: one.holding ?? undefined },
+        },
       });
     default:
       return create(Pb.CommandSchema, {
@@ -192,6 +195,7 @@ const readCommand = ({ arm, type }: Pb.Command): Command => {
         type: 'seed',
         arm,
         joints: joints(type.value.joints ?? create(Pb.JointsSchema)),
+        holding: type.value.holding ?? null,
       };
     case 'hold':
     case 'resume':

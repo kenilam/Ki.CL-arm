@@ -132,6 +132,8 @@ message Command {
   // taking over a model mid-run, so it goes on from there instead of from home.
   message Seed {
     Joints joints = 1;
+    // The case on the pad, if the arm taken over from held one.
+    optional string holding = 2;
   }
 
   string arm = 1;
