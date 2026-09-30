@@ -134,11 +134,14 @@ async fn servo_loop(arms: Shared, reports: broadcast::Sender<Vec<u8>>, ros: Ros)
         let mut guard = arms.lock().await;
 
         for controller in guard.controllers.values_mut() {
+            let id = controller.id().to_owned();
+
+            observe(&id, controller, &ros);
+
             for _ in 0..ticks {
                 controller.tick(TICK);
             }
 
-            let id = controller.id().to_owned();
             let mut out = controller.drain();
 
             if telemetry {
@@ -152,6 +155,17 @@ async fn servo_loop(arms: Shared, reports: broadcast::Sender<Vec<u8>>, ros: Ros)
         }
     }
 }
+
+/// Over ROS, where the physics say the joints are goes into the controller before it ticks: a step is done when the arm has arrived, not when the model has.
+#[cfg(feature = "ros2")]
+fn observe(id: &str, controller: &mut Controller, ros: &Ros) {
+    if let Some(measured) = ros.as_ref().and_then(|ros| ros.measured(id)) {
+        controller.observe(measured);
+    }
+}
+
+#[cfg(not(feature = "ros2"))]
+fn observe(_id: &str, _controller: &mut Controller, _ros: &Ros) {}
 
 /// The arm's telemetry. Over ROS the controller's joints go out as the targets, and what the physics did is what the hub is told.
 #[cfg(feature = "ros2")]

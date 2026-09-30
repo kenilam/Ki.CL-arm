@@ -245,3 +245,27 @@ fn a_known_obstacle_does_not_hold_the_arm() {
     assert!(!kinds(&reports).contains(&"held"), "{:?}", kinds(&reports));
     assert!(kinds(&reports).contains(&"done"));
 }
+
+#[test]
+fn a_move_is_not_done_until_the_physics_have_arrived() {
+    let mut controller = Controller::new(ARM);
+    let target = Point { x: 0.8, y: 0.9, z: 1.4 };
+    let start = controller.telemetry().joints;
+
+    controller.command(planned(vec![swing(target)], 1, None));
+
+    // The physics never move: the servo model arrives, the step does not complete.
+    for _ in 0..8000 {
+        controller.observe(start);
+        controller.tick(TICK);
+    }
+
+    assert_eq!(controller.telemetry().state, State::Running);
+    assert_eq!(controller.telemetry().step, 0);
+
+    // The physics catch up: done at once.
+    controller.observe(solve(&target, 0.0, 0.0));
+    controller.tick(TICK);
+
+    assert!(kinds(&controller.drain()).contains(&"done"));
+}

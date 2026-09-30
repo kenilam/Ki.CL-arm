@@ -67,3 +67,7 @@ pub const SETTLED: f64 = 0.002;
 
 /// How close the joints must be to pass a swing waypoint without stopping, in radians.
 pub const PASSING: f64 = 0.05;
+
+/// How close an arm that reports its own joints must be to the goal, in radians, for a step to count as reached.
+/// Looser than `SETTLED`: a physical arm sags under gravity and trails a moving target by a little.
+pub const FOLLOWED: f64 = 0.02;
