@@ -83,22 +83,25 @@ fn cause(from: ctl::Cause) -> wire::Cause {
     }
 }
 
-fn telemetry(from: ctl::Telemetry) -> wire::Telemetry {
-    let j = from.joints;
+fn joints(j: ctl::Joints) -> wire::Joints {
+    wire::Joints {
+        yaw: j.yaw,
+        shoulder: j.shoulder,
+        elbow: j.elbow,
+        wrist: j.wrist,
+        roll: j.roll,
+        grip: j.grip,
+    }
+}
 
+fn telemetry(from: ctl::Telemetry) -> wire::Telemetry {
     wire::Telemetry {
         at: from.at,
         state: state(from.state) as i32,
         revision: from.revision,
         step: from.step,
-        joints: Some(wire::Joints {
-            yaw: j.yaw,
-            shoulder: j.shoulder,
-            elbow: j.elbow,
-            wrist: j.wrist,
-            roll: j.roll,
-            grip: j.grip,
-        }),
+        joints: Some(joints(from.joints)),
+        target: from.target.map(joints),
         pad: Some(wire::Pose {
             at: Some(wire::Point { x: from.pad.at.x, y: from.pad.at.y, z: from.pad.at.z }),
             facing: from.pad.facing,

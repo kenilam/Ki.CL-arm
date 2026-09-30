@@ -25,6 +25,7 @@ const local = (
 
   return {
     arm,
+    where: 'worker',
     send: (command) => controller.command(command),
     feed: (boxes) => controller.feed(boxes),
     listen: (handler) => {

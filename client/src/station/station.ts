@@ -37,7 +37,6 @@ import {
   send,
   show,
   type Station as State,
-  title,
   world,
 } from './state';
 import { cases as standing, extent } from './world';
@@ -366,6 +365,7 @@ const create = ({
     station.link.send({ type: 'stop', arm: id });
     station.link.send({ type: 'reset', arm: id });
     station.homing = true;
+    say(station, { type: 'linked', where: station.link.where });
   };
 
   /** Greets the arm again over the link it has: for an arm that restarted while the hub ran on. */
@@ -524,7 +524,7 @@ const create = ({
     station.queue.push({ target: rider.id, belt: null, of: null, to: hex });
     note(
       station,
-      `${title(rider.id)} arrived`,
+      `${label(rider.id)} arrived`,
       'info',
       'taking it off the belt'
     );

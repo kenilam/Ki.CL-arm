@@ -72,6 +72,14 @@ const REPORTS: Report[] = [
     },
     pad: { at: { x: 0.2, y: 1.6, z: 1 }, facing: 0.75 },
     holding: 'case-8',
+    target: {
+      yaw: 0.1,
+      shoulder: 0.25,
+      elbow: 0.3,
+      wrist: 0.4,
+      roll: 0.5,
+      grip: 1,
+    },
   },
   {
     type: 'telemetry',
@@ -83,6 +91,7 @@ const REPORTS: Report[] = [
     joints: { yaw: 0, shoulder: 0, elbow: 0, wrist: 0, roll: 0, grip: 0 },
     pad: { at: { x: 0, y: 0, z: 0 }, facing: 0 },
     holding: null,
+    target: null,
   },
   { type: 'loaded', arm: ARM, revision: 3 },
   { type: 'rejected', arm: ARM, revision: 3, reason: 'holding case-7' },

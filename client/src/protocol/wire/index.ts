@@ -229,6 +229,7 @@ const telemetry = (one: Telemetry): Pb.Telemetry =>
     joints: one.joints,
     pad: one.pad,
     holding: one.holding ?? undefined,
+    target: one.target ?? undefined,
   });
 
 const encodeReport = (report: Report) => {
@@ -303,6 +304,7 @@ const decodeReport = (bytes: Uint8Array): Report => {
         joints: joints(value.joints ?? create(Pb.JointsSchema)),
         pad: pose(pad ?? create(Pb.PoseSchema)),
         holding: holding ?? null,
+        target: value.target ? joints(value.target) : null,
       };
     }
     case 'loaded':

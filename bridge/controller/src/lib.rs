@@ -76,6 +76,7 @@ impl Controller {
             joints: arm.drive.joints,
             pad: Pose { at: forward(&arm.drive.joints), facing: bearing(&arm.drive.joints) },
             holding: arm.holding.clone(),
+            target: None,
         }
     }
 }
