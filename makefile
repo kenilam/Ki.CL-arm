@@ -67,3 +67,10 @@ gcp.tunnel:
 
 gcp.ngc:
 	gcp/ngc.sh
+
+# A command in Isaac Sim's container on the machine, detached; no command runs the stock Franka example headless.
+gcp.isaac:
+	gcp/isaac.sh $(CMD)
+
+gcp.isaac.log:
+	gcp/ssh.sh tail -n 40 /var/lib/arm/isaac/run.log

@@ -57,6 +57,8 @@ make gcp.status   # state, and the tail of what the startup script said
 make gcp.ssh      # a shell there, over IAP
 NGC_API_KEY=… make gcp.ngc   # the key into Secret Manager, the machine allowed to read it, and its Docker logged in to nvcr.io
 make gcp.tunnel   # localhost:3200 -> the machine's 3200
+make gcp.isaac    # a command in Isaac Sim's container there, detached; none = the stock Franka example, headless
+make gcp.isaac.log
 make gcp.down     # stop; the disk stays. make gcp.delete takes it all away
 ```
 
