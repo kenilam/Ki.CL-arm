@@ -331,9 +331,7 @@ describe('a station', () => {
     const events = station.drain();
 
     assert.ok(events.some((event) => event.type === 'alarm'));
-    assert.ok(
-      texts(events).includes('stopped no slot left for another pallet')
-    );
+    assert.ok(texts(events).includes('stopped no slot left'));
     assert.equal(station.ready(rider.belt), false);
   });
 });

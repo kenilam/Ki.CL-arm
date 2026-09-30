@@ -61,7 +61,7 @@ const handle = (station: Station, report: Report) => {
         report.seen.forEach((id) => station.sensed.add(id));
         note(
           station,
-          `arm found ${report.seen.join(', ')} in its way`,
+          `${report.seen.join(', ')} in the way`,
           'warning',
           'planning again'
         );
@@ -94,12 +94,7 @@ const reconcile = (station: Station) => {
 
     if (!standing) {
       // Nothing to plan with: no size, no place it came from. The arm keeps it, and the operator is told.
-      note(
-        station,
-        `${label(truth)}, unknown here`,
-        'error',
-        'waiting for an operator'
-      );
+      note(station, `${label(truth)} unknown`, 'error', 'waiting');
       cancel(station);
       station.resend = false;
 
@@ -110,12 +105,7 @@ const reconcile = (station: Station) => {
     station.cases = remove(world(station), truth).cases;
     note(station, `${label(truth)}`, 'warning', 'has warning');
   } else {
-    note(
-      station,
-      `not holding not ${label(own!)}`,
-      'warning',
-      'the case is lost'
-    );
+    note(station, `${label(own!)} lost`, 'warning', 'not on the pad');
     station.holding = null;
   }
 

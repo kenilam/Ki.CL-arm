@@ -125,9 +125,7 @@ const refuse = (
   say(station, { type: 'refuse', target, across });
   note(
     station,
-    reason === 'room'
-      ? `no room on the buffer for ${label(id)}`
-      : `no clear path for ${label(id)}`,
+    reason === 'room' ? `no room for ${label(id)}` : `no path for ${label(id)}`,
     'error',
     [
       across.length ? `${across.join(', ')} in the way` : '',
@@ -207,12 +205,7 @@ const next = (station: Station) => {
 
     if (!station.waiting.has(order.target)) {
       station.waiting.add(order.target);
-      note(
-        station,
-        `${label(order.target)} waits`,
-        'info',
-        'for room on the buffer'
-      );
+      note(station, `${label(order.target)} waits`, 'info', 'no room');
     }
   } else if ('refused' in found) {
     station.waiting.delete(order.target);
@@ -255,7 +248,7 @@ const spread = (station: Station) => {
   });
   station.outbound.push(at);
   say(station, { type: 'pallet', at });
-  note(station, `new pallet on slot ${side}`, 'info', 'case arrival');
+  note(station, 'new pallet', 'info', 'case arrival');
 
   return true;
 };
@@ -268,7 +261,7 @@ const stop = (station: Station) => {
 
   station.halted = true;
   say(station, { type: 'alarm' });
-  note(station, 'stopped', 'error', 'no slot left for another pallet');
+  note(station, 'stopped', 'error', 'no slot left');
 };
 
 /** Lets the arm go on, unless the hub holds the whole floor. */
@@ -302,14 +295,14 @@ const replan = (station: Station) => {
     if (station.halted) {
       station.halted = false;
       say(station, { type: 'calm' });
-      note(station, 'found a way', 'confirm', 'carrying on');
+      note(station, 'found a way', 'confirm');
     }
   } else if (station.holding) {
     // Holding a case with nowhere to take it: stay held, and wait for the cell to change.
     if (!station.halted) {
       station.halted = true;
       say(station, { type: 'alarm' });
-      note(station, 'stopped', 'error', 'no clear way on with the case');
+      note(station, 'stopped', 'error', 'no way on');
     }
   } else {
     cancel(station);
@@ -422,12 +415,7 @@ const retreat = (station: Station, job: Job, gate: number) => {
   job.skip += shift;
   job.opened.clear();
   job.revision = send(station, job.steps);
-  note(
-    station,
-    'back up',
-    'warning',
-    'a case is coming along the belt under the drop'
-  );
+  note(station, 'back up', 'warning', 'case under the drop');
 };
 
 /**
