@@ -72,6 +72,10 @@ gcp.ngc:
 gcp.isaac:
 	gcp/isaac.sh $(CMD)
 
+# Our cell in Isaac Sim on the machine: the arm from sim/arm.urdf for each id in ARMS, on ROS 2.
+gcp.sim:
+	gcp/sim.sh
+
 gcp.isaac.log:
 	gcp/ssh.sh tail -n 40 /var/lib/arm/isaac/run.log
 
