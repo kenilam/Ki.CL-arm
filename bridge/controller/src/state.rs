@@ -27,6 +27,8 @@ pub struct Arm {
     pub holding: Option<String>,
     /// Gates the hub has opened in the plan under way.
     pub opened: HashSet<String>,
+    /// Where the arm's joints physically are, when something outside reports them: a step is not done until these have arrived too, and the sensors read from here.
+    pub measured: Option<Joints>,
     /// What is physically around the arm, for its sensors to meet.
     pub boxes: Vec<Obstacle>,
     pub scanned: f64,
@@ -52,6 +54,7 @@ pub fn boot(id: &str) -> Arm {
         waited: 0.0,
         holding: None,
         opened: HashSet::new(),
+        measured: None,
         boxes: Vec::new(),
         scanned: 0.0,
         clock: 0.0,

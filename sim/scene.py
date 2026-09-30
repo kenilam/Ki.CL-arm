@@ -48,8 +48,9 @@ simulation_app.update()
 # Acceleration drives, so the gains mean the same whatever a link weighs: a
 # joint closes on its target like a spring of this natural frequency, a little
 # over critically damped. The controller streams a moving target with its own
-# speed and acceleration caps, so the drive only has to follow.
-FREQUENCY = 30.0
+# speed and acceleration caps, so the drive only has to follow. Stiff enough
+# that gravity sag stays inside the controller's FOLLOWED tolerance.
+FREQUENCY = 50.0
 STIFFNESS = FREQUENCY**2
 DAMPING = 2.2 * FREQUENCY
 

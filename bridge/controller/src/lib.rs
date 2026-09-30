@@ -15,7 +15,7 @@ mod servo;
 mod state;
 mod types;
 
-pub use constants::{REPORT, TICK};
+pub use constants::{FOLLOWED, REPORT, TICK};
 pub use kinematics::{bearing, forward, home, solve};
 pub use types::*;
 
@@ -41,6 +41,11 @@ impl Controller {
 
     pub fn feed(&mut self, boxes: Vec<Obstacle>) {
         self.arm.boxes = boxes;
+    }
+
+    /// Tells the controller where the arm's joints physically are, from the simulator or a real arm. From then on a step is done only when these have arrived, and the sensors are read from here. The browser's simulated arm never calls this: its joints are the servo model's.
+    pub fn observe(&mut self, joints: Joints) {
+        self.arm.measured = Some(joints);
     }
 
     /// One servo tick of `dt` seconds. Held or idle, the joints brake; stopped, nothing moves.

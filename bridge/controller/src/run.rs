@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::constants::{PASSING, SCAN};
+use crate::constants::{FOLLOWED, PASSING, SCAN};
 use crate::kinematics::solve;
 use crate::motion::{advance, begin, finished, pose};
 use crate::sensors::sense;
@@ -41,7 +41,7 @@ fn watch(arm: &mut Arm) {
         arm.plan.as_ref().map(|plan| plan.known.iter().map(String::as_str).collect()).unwrap_or_default();
     let mut seen: Vec<String> = Vec::new();
 
-    for id in sense(&arm.drive.joints, &arm.boxes) {
+    for id in sense(&arm.measured.unwrap_or(arm.drive.joints), &arm.boxes) {
         if !known.contains(id.as_str()) && !seen.contains(&id) {
             seen.push(id);
         }
@@ -52,6 +52,15 @@ fn watch(arm: &mut Arm) {
         arm.cause = Cause::Sensor;
         say(arm, Report::Held { cause: Cause::Sensor, seen });
     }
+}
+
+/// Whether the arm's physical joints, when something reports them, are within `within` of the goal. The vacuum is the controller's own, so it is not the physics' to be behind on.
+fn arrived(arm: &Arm, within: f64) -> bool {
+    arm.measured.is_none_or(|mut measured| {
+        measured.grip = arm.goal.grip;
+
+        settled(&measured, &arm.goal, Some(within))
+    })
 }
 
 /// The instruction under way moves the joints a step, then the sensors are read.
@@ -80,7 +89,9 @@ pub fn run(arm: &mut Arm, dt: f64) {
                 .and_then(|plan| plan.instructions.get(arm.step as usize + 1))
                 .is_some_and(|next| matches!(next, Instruction::Move { .. }));
             let within = (ease == Ease::Swing && next_is_move).then_some(PASSING);
-            let done = finished(&segment) && settled(&arm.drive.joints, &arm.goal, within);
+            let done = finished(&segment)
+                && settled(&arm.drive.joints, &arm.goal, within)
+                && arrived(arm, within.map_or(FOLLOWED, |passing| passing.max(FOLLOWED)));
 
             arm.segment = Some(segment);
 
