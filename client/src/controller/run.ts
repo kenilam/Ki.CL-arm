@@ -27,7 +27,21 @@ const complete = (arm: Arm) => {
   arm.waited = 0;
 
   if (arm.pending) {
-    return adopt(arm, arm.pending);
+    const plan = arm.pending;
+
+    arm.pending = null;
+
+    // Kept back through a grip: what the arm holds has changed since it was checked, so it is checked again.
+    if (plan.holding !== arm.holding) {
+      return say(arm, {
+        type: 'rejected',
+        arm: arm.id,
+        revision: plan.revision,
+        reason: arm.holding ? `holding case ${arm.holding}` : 'holding nothing',
+      });
+    }
+
+    return adopt(arm, plan);
   }
 
   if (arm.step >= arm.plan.instructions.length) {

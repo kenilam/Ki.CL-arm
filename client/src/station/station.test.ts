@@ -207,7 +207,7 @@ describe('a station', () => {
     const notes = texts(events);
 
     assert.ok(
-      !notes.some((text) => text.startsWith('arm refused the plan')),
+      !notes.some((text) => text.startsWith('arm refused')),
       notes.join('\n')
     );
     assert.ok(
@@ -244,7 +244,7 @@ describe('a station', () => {
 
     assert.ok(heard.includes('loaded'), 'the new arm was never given a plan');
     assert.ok(
-      !notes.some((text) => text.startsWith('arm refused the plan')),
+      !notes.some((text) => text.startsWith('arm refused')),
       notes.join('\n')
     );
     assert.ok(

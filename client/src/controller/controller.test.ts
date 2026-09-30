@@ -161,7 +161,7 @@ describe('a newer plan', () => {
     assert.equal(controller.telemetry().revision, 2);
   });
 
-  test('waits for a grip to finish before taking over', () => {
+  test('a plan kept back through a grip is checked again after it', () => {
     const controller = create({ arm: ARM });
 
     controller.command({
@@ -181,10 +181,11 @@ describe('a newer plan', () => {
 
     const reports = run(controller);
 
+    // The grip took c1, which the plan kept back did not allow for: it is refused, and the arm finishes its own.
     assert.equal(controller.telemetry().holding, 'c1');
     assert.deepEqual(kinds(reports), [
       'progress',
-      'loaded',
+      'rejected',
       'progress',
       'done',
     ]);
