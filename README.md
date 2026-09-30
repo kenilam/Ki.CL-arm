@@ -47,7 +47,7 @@ Ki.CL gets its types for `arm/*` from the remote's `@mf-types.zip`, pulled by th
 
 ## The GCP machine
 
-Isaac Sim and Isaac ROS run on one GPU machine in GCP, and the page reaches it over an IAP tunnel. `gcp/env.sh` describes the machine: project from `gcloud config`, `us-central1-a`, a `g2-standard-8` (an L4 comes with it), 200 GB, Ubuntu 22.04, no public address. Override any of it from the environment: `ZONE=europe-west4-b make gcp.up`, `SPOT=1 make gcp.up` for a preemptible box.
+Isaac Sim and Isaac ROS run on one GPU machine in GCP, and the page reaches it over an IAP tunnel. `gcp/env.sh` describes the machine: project from `gcloud config`, `us-central1-c`, a `g2-standard-8` (an L4 comes with it), 100 GB, Ubuntu 24.04 (Isaac ROS 5.0's tooling supports nothing older), no public address. Override any of it from the environment: `ZONE=europe-west4-b make gcp.up`, `SPOT=1 make gcp.up` for a preemptible box.
 
 ```bash
 gcloud auth login
@@ -84,7 +84,7 @@ make gcp.bridge.log
 make gcp.tunnel     # localhost:3300 -> the machine's 3200
 ```
 
-`bridge/Dockerfile.ros2` is the draft for the ROS 2 flavour: the Isaac ROS development image as base, Rust and `r2r` on top, built with ROS sourced. The machine keeps a checkout of `isaac_ros_common` under `/var/lib/arm/isaac_ros` whose `run_dev.sh` pulls that base image and tags it `isaac_ros_dev-x86_64`.
+`bridge/Dockerfile.ros2` is the draft for the ROS 2 flavour: the Isaac ROS development image as base, Rust and `r2r` on top, built with ROS sourced. Isaac ROS 5.0 moved its Docker tooling out of `isaac_ros_common` into the `isaac-ros-cli` apt package (`sudo isaac-ros init docker`, `isaac-ros activate`), which the machine's startup script installs; the base image's name comes from there.
 
 Rust over C++ because the bridge's own work is sockets and protobuf, where Rust's libraries are the best available, and because of that shared controller. ROS 2 is reached with `r2r`, and MoveIt through its action interfaces, which need no client library.
 
