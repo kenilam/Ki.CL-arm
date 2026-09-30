@@ -47,7 +47,7 @@ Ki.CL gets its types for `arm/*` from the remote's `@mf-types.zip`, pulled by th
 
 ## The GCP machine
 
-Isaac Sim and Isaac ROS run on one GPU machine in GCP, and the page reaches it over an IAP tunnel. `gcp/env.sh` describes the machine: project from `gcloud config`, `us-central1-c`, a `g2-standard-8` (an L4 comes with it), 100 GB, Ubuntu 24.04 (Isaac ROS 5.0's tooling supports nothing older), no public address. Override any of it from the environment: `ZONE=europe-west4-b make gcp.up`, `SPOT=1 make gcp.up` for a preemptible box.
+Isaac Sim and Isaac ROS run on one GPU machine in GCP, and the page reaches it over an IAP tunnel. `gcp/env.sh` describes the machine: project from `gcloud config`, `us-central1-a`, a `g2-standard-8` (an L4 comes with it), 100 GB, Ubuntu 24.04 (Isaac ROS 5.0's tooling supports nothing older), no public address. Override any of it from the environment: `ZONE=europe-west4-b make gcp.up`, `SPOT=1 make gcp.up` for a preemptible box.
 
 ```bash
 gcloud auth login
@@ -60,7 +60,10 @@ make gcp.tunnel   # localhost:3200 -> the machine's 3200
 make gcp.isaac    # a command in Isaac Sim's container there, detached; none = the stock Franka example, headless
 make gcp.isaac.log
 make gcp.down     # stop; the disk stays. make gcp.delete takes it all away
+ZONE=us-central1-b SNAPSHOT=arm-20260930 make gcp.up   # the machine again in another zone, from a disk snapshot
 ```
+
+A stopped on-demand machine is not guaranteed a GPU when it starts: a zone can be out of L4s, and the start is refused with STOCKOUT. It happened on the first morning. The way out is a snapshot of the disk (`gcloud compute snapshots create arm-<date> --source-disk arm --source-disk-zone <zone>`) and `gcp.up` with `ZONE` and `SNAPSHOT`, which recreates the machine in a zone that has one, with Isaac Sim and its caches intact; then set that zone in `gcp/env.sh` and delete the old instance. Keep a recent snapshot for this.
 
 First boot installs the NVIDIA driver, reboots once, then installs Docker and the NVIDIA container toolkit, proves a container can see the GPU, and sets up the idle watchdog: a timer that stops the machine after 30 minutes with no connection on the bridge's port and no ssh session. `make gcp.status` shows it happen. The machine stops itself at 22:00 (`STOP_AT`, `TIMEZONE`) so a forgotten box costs an evening, not a month; it bills whenever it is up.
 
@@ -105,7 +108,7 @@ Nothing here is public yet: the machine answers only to IAP and the bridge only 
 
 1. **Wire.** Schema, codegen, remote link, reference bridge. Done.
 2. **Federate the arm code.** Done: `client/` is the `arm` remote, Ki.CL keeps the floor page and everything only a page needs. Workers load through Ki.CL's `/arm` proxy.
-3. **GCP.** Done: the machine is up in `us-central1-c`, Isaac Sim 6.0.0 runs a stock Franka headless on its L4 with caches persisted. Isaac ROS comes with the bridge.
+3. **GCP.** Done: the machine is up in `us-central1-a`, Isaac Sim 6.0.0 runs a stock Franka headless on its L4 with caches persisted. Isaac ROS comes with the bridge.
 4. **Bridge, Rust.** Done as far as the wire and the simulated arm: `bridge/` above. Next, the ROS 2 side through `r2r`: each `move` becomes a cuMotion goal through MoveIt's actions, `pick` and `place` drive the gripper, `gate` and `hold` pause the trajectory, `stop` is the controller manager's emergency stop, `/joint_states` comes back as `Telemetry`.
 5. **Sim content.** The arm as a URDF from the link lengths in `client/src/model/constants.ts`, the hex floor and belts as USD, and `Scene` spawning cases and obstacles so the panel's obstacle editor still works against the sim.
 6. **Perception.** Isaac Sim cameras through Isaac ROS, FoundationPose for case poses, nvblox for the obstacle map cuMotion plans around. Detected obstacles come back as boxes so the floor draws what the arm saw.

@@ -52,7 +52,14 @@ case "$status" in
     gcloud compute instances start "$NAME" --zone "$ZONE" --project "$PROJECT" >/dev/null
     ;;
   "")
-    echo "creating $NAME: $MACHINE in $ZONE, ${DISK_GB}GB, $( [ "$SPOT" = 1 ] && echo spot || echo on-demand )"
+    echo "creating $NAME: $MACHINE in $ZONE, ${DISK_GB}GB, $( [ "$SPOT" = 1 ] && echo spot || echo on-demand )${SNAPSHOT:+, from snapshot $SNAPSHOT}"
+    # From SNAPSHOT when one is named: the way to move the machine to a zone that has an L4 to give, with
+    # Isaac Sim and its caches intact. Otherwise a fresh image, which the startup script sets up.
+    if [ -n "${SNAPSHOT:-}" ]; then
+      disk=(--create-disk "name=$NAME,boot=yes,auto-delete=yes,source-snapshot=$SNAPSHOT,size=${DISK_GB}GB,type=pd-balanced")
+    else
+      disk=(--image-family "$IMAGE_FAMILY" --image-project "$IMAGE_PROJECT" --boot-disk-size "${DISK_GB}GB" --boot-disk-type pd-balanced)
+    fi
     # Expanded with the ${arr[@]+...} form: macOS bash treats an empty array as unbound under set -u.
     provisioning=()
     if [ "$SPOT" = 1 ]; then
@@ -65,10 +72,7 @@ case "$status" in
       --maintenance-policy TERMINATE \
       --no-address \
       --tags "$TAG" \
-      --image-family "$IMAGE_FAMILY" \
-      --image-project "$IMAGE_PROJECT" \
-      --boot-disk-size "${DISK_GB}GB" \
-      --boot-disk-type pd-balanced \
+      "${disk[@]}" \
       --metadata "ngc-secret=$NGC_SECRET" \
       --metadata-from-file startup-script="$here/startup.sh" \
       --resource-policies "$TAG-stop" \

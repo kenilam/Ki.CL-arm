@@ -5,8 +5,9 @@
 set -euo pipefail
 
 PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
-# c: a and b had no L4 to give when the machine was made (2026-09-29).
-ZONE="${ZONE:-us-central1-c}"
+# Whichever zone had an L4 to give last time; the region's zones run out in turn. When a start is refused
+# for capacity, snapshot the disk and `ZONE=<another> SNAPSHOT=<name> make gcp.up` recreates the machine there.
+ZONE="${ZONE:-us-central1-a}"
 REGION="${REGION:-${ZONE%-*}}"
 NAME="${NAME:-arm}"
 # A G2 machine comes with its L4 built in; no accelerator flag needed.
