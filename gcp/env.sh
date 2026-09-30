@@ -18,8 +18,15 @@ IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-2404-lts-amd64}"
 IMAGE_PROJECT="${IMAGE_PROJECT:-ubuntu-os-cloud}"
 # SPOT=1 for a preemptible machine at a fraction of the price; fine for a dev box, not for a demo.
 SPOT="${SPOT:-0}"
-# The bridge, and for now the dev arm server, listen here. The IAP tunnel lands on it.
-PORT="${PORT:-3200}"
+# Two bridges share the machine: `arm` for prod on 3200, `arm-dev` for dev on 3201. STAGE picks one for
+# gcp.bridge, gcp.bridge.log and gcp.tunnel; both ports are open to IAP and both count for the idle watchdog.
+STAGE="${STAGE:-prod}"
+case "$STAGE" in
+  prod) BRIDGE="arm"; PORT="${PORT:-3200}" ;;
+  dev) BRIDGE="arm-dev"; PORT="${PORT:-3201}" ;;
+  *) echo "STAGE is prod or dev, not '$STAGE'" >&2; exit 1 ;;
+esac
+PORTS="3200,3201"
 # The machine stops itself every night at this hour, so a forgotten box costs one evening, not a month.
 STOP_AT="${STOP_AT:-22}"
 TIMEZONE="${TIMEZONE:-America/Los_Angeles}"

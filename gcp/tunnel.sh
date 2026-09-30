@@ -8,7 +8,7 @@ source "$(dirname "$0")/env.sh"
 
 LOCAL_PORT="${LOCAL_PORT:-3300}"
 
-echo "localhost:$LOCAL_PORT -> $NAME:$PORT (ctrl-c to close)"
+echo "localhost:$LOCAL_PORT -> $NAME:$PORT ($BRIDGE, ctrl-c to close)"
 echo "in Ki.CL: KICL_ARM_BRIDGE_URL=http://localhost:$LOCAL_PORT"
 exec gcloud compute start-iap-tunnel "$NAME" "$PORT" \
   --zone "$ZONE" \
