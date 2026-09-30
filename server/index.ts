@@ -16,8 +16,9 @@ import { decodeToArm, encodeReport } from '../client/src/protocol/wire';
  * link dials that when there is no bridge on GCP yet, and it is the
  * reference for what that bridge has to do. Every frame is one protobuf
  * message. An arm comes into being on the first message that names it,
- * which is the scene the hub feeds it on load; a real bridge knows its
- * arms before anyone dials in.
+ * which is the scene the hub feeds it on load, and every arm goes when the
+ * last hub does; a real bridge knows its arms before anyone dials in and
+ * keeps them after.
  */
 
 const PORT = Number(process.env.PORT ?? 3200);
@@ -100,6 +101,13 @@ links.on('connection', (socket) => {
   socket.on('close', () => {
     sockets.delete(socket);
     console.log(`hub gone (${sockets.size})`);
+
+    // The simulated world lives in the hub, so with no hub left the arms in it are gone too: the next hub starts them fresh, holding nothing. A real arm keeps its state; that is the bridge's business.
+    if (!sockets.size) {
+      arms.forEach((one) => one.close());
+      arms.clear();
+      console.log('arms cleared');
+    }
   });
 });
 
