@@ -1,0 +1,15 @@
+[package]
+name = "arm-wire"
+description = "The wire between the hub and its arms, generated from proto/kicl/arm/v1/arm.proto."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+prost = { workspace = true }
+bytes = { workspace = true }
+
+[build-dependencies]
+prost-build = "0.14"
+# protoc comes with the build, so nothing has to be installed on the machine or here.
+protoc-bin-vendored = "3"

@@ -74,3 +74,17 @@ gcp.isaac:
 
 gcp.isaac.log:
 	gcp/ssh.sh tail -n 40 /var/lib/arm/isaac/run.log
+
+# The Rust side: the controller, the wire and the bridge in bridge/.
+bridge.test:
+	cd bridge && cargo test
+
+bridge.run:
+	cd bridge && cargo run -p arm-bridge -- --listen 127.0.0.1:3201
+
+# Builds the bridge on the machine and runs it there on :3200, restarting with the machine.
+gcp.bridge:
+	gcp/bridge.sh
+
+gcp.bridge.log:
+	gcp/ssh.sh sudo docker logs --tail 40 arm-bridge
