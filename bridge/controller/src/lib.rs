@@ -6,6 +6,7 @@
 
 mod commands;
 mod constants;
+mod frames;
 mod kinematics;
 mod motion;
 mod run;
