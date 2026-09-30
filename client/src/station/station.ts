@@ -522,12 +522,7 @@ const create = ({
       yaw: rider.yaw,
     };
     station.queue.push({ target: rider.id, belt: null, of: null, to: hex });
-    note(
-      station,
-      `${label(rider.id)} arrived`,
-      'info',
-      'off the belt'
-    );
+    note(station, `${label(rider.id)} arrived`, 'info', 'off the belt');
     show(station);
 
     return true;
@@ -621,7 +616,7 @@ const create = ({
       retry(station);
     }
 
-    if (station.resend) {
+    if (station.resend && station.clock >= station.resendAt) {
       station.resend = false;
       replan(station);
     }

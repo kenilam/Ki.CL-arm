@@ -9,6 +9,7 @@ import { alongBelt } from '../grid/layout';
 
 // Partials
 import { retry } from './jobs';
+import { RESEND } from './constants';
 import { label, note, say, send, show, type Station, world } from './state';
 import { place, remove } from './world';
 
@@ -37,7 +38,9 @@ const handle = (station: Station, report: Report) => {
       return;
     case 'rejected':
       note(station, 'arm refused the plan', 'error', report.reason);
+      reconcile(station);
       station.resend = true;
+      station.resendAt = station.clock + RESEND;
 
       return;
     case 'progress':
@@ -64,6 +67,52 @@ const handle = (station: Station, report: Report) => {
     default:
       return;
   }
+};
+
+/**
+ * The arm's word on what is on its pad beats the station's: after a refusal
+ * the station takes the arm's `holding` as its own, so the next plan is not
+ * refused for the same reason. A case the arm holds that the station had
+ * standing in the cell comes off the cell; one the station thought held
+ * that the arm says is gone is dropped from the picture, and said.
+ */
+const reconcile = (station: Station) => {
+  const truth = station.telemetry?.holding ?? null;
+  const own = station.holding?.id ?? null;
+
+  if (truth === own) {
+    return;
+  }
+
+  if (truth) {
+    const standing = station.cases[truth];
+
+    if (!standing) {
+      note(
+        station,
+        `arm holds ${label(truth)}, unknown here`,
+        'error',
+        'stopping'
+      );
+      station.link.send({ type: 'stop', arm: station.id });
+
+      return;
+    }
+
+    station.holding = standing;
+    station.cases = remove(world(station), truth).cases;
+    note(station, `arm holds ${label(truth)}`, 'warning', 'taking its word');
+  } else {
+    note(
+      station,
+      `arm holds nothing, not ${label(own!)}`,
+      'warning',
+      'the case is lost'
+    );
+    station.holding = null;
+  }
+
+  show(station);
 };
 
 /** One instruction done: a pick or place moves a case in the cell. */
