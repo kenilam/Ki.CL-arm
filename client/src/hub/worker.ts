@@ -3,7 +3,7 @@ import type { Box, Feed } from '../protocol';
 
 // Controller
 import { connect } from '../controller/link';
-import { dial, type Wire } from '../controller/remote';
+import { dial, resolve, type Wire } from '../controller/remote';
 
 // Grid
 import type { Hex } from '../grid/hex';
@@ -123,16 +123,29 @@ const wake = () => {
 const greet = () => hub?.stations.forEach(({ id }) => hub?.wake(id));
 
 /** A new hub from `cells` and `lines`, its arms in workers here or on the bridge at `link`. */
+/**
+ * The wire to the bridge at `address`, dialled once and kept: a socket over a tunnel takes seconds to come up,
+ * and the switch has to be instant however often it is pressed. Only a different address hangs up the old one.
+ */
+const wireTo = (address: string) => {
+  if (wire?.url !== resolve(address)) {
+    wire?.close();
+    wire = dial(address, greet);
+  }
+
+  return wire;
+};
+
 const build = (cells: Cell[], lines: Line[], link?: string) => {
   hub?.close();
-  wire?.close();
-  wire = link ? dial(link, greet) : null;
+
+  const bridge = link ? wireTo(link) : null;
   // Each arm's controller runs in a worker of its own, as its own box would, unless a bridge has them.
   hub = create({
     cells,
     lines,
     connect: (arm) => {
-      const found = wire ? wire.link(arm) : connect(arm);
+      const found = bridge ? bridge.link(arm) : connect(arm);
 
       feeds.set(arm, found.feed);
 
@@ -175,17 +188,19 @@ scope.onmessage = ({ data }) => {
       build(data.cells, data.lines, data.link);
 
       return;
-    case 'link':
-      // The links let go of close themselves as each station swaps; a wire's socket goes with its last link.
-      wire = data.link ? dial(data.link, greet) : null;
+    case 'link': {
+      // Off the bridge, the wire stays up and its arms stay held, so the next press is instant.
+      const bridge = data.link ? wireTo(data.link) : null;
+
       hub?.stations.forEach(({ id }) => {
-        const found = wire ? wire.link(id) : connect(id);
+        const found = bridge ? bridge.link(id) : connect(id);
 
         feeds.set(id, found.feed);
         hub?.relink(id, found);
       });
 
       return;
+    }
     case 'load':
       hub?.load(data.hex);
 

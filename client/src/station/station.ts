@@ -442,6 +442,9 @@ const create = ({
     to.send({ type: 'reset', arm: id });
   };
 
+  /** Whether a new link has been dialled and the arm on it has yet to answer. */
+  const switching = () => dialling !== null;
+
   const load = (catalogue: Box[]) => {
     claims.clear();
     stuck.clear();
@@ -756,6 +759,7 @@ const create = ({
     ready,
     receive,
     relink,
+    switching,
     snapshot,
     tick,
     wake,

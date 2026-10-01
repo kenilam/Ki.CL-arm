@@ -523,6 +523,12 @@ const create = ({
    * it's off again.
    */
   const tick = (dt: number) => {
+    // While any arm is between links, the whole floor waits: belts and arms alike, so nothing moves on
+    // without the arm that was working it, and the switch is one pause rather than a scramble.
+    if ([...stations.values()].some((one) => one.switching())) {
+      return;
+    }
+
     floor.forEach((found) => carry(found, dt));
 
     stations.forEach((one, key) => {
