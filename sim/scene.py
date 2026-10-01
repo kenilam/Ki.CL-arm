@@ -14,6 +14,7 @@ One `/clock` for the lot.
 import argparse
 import os
 import sys
+import time
 
 from isaacsim import SimulationApp
 
@@ -23,6 +24,12 @@ parser.add_argument("--urdf", default=os.path.join(os.path.dirname(os.path.abspa
 parser.add_argument("--out", default="/arm/sim/usd", help="Where the converted USD is written.")
 parser.add_argument("--spacing", type=float, default=4.0, help="Metres between arms, along the stage's Y.")
 parser.add_argument("--test", action="store_true", help="Run a few frames and exit.")
+parser.add_argument(
+    "--hz",
+    type=int,
+    default=40,
+    help="Physics steps per second. The loop renders once per step, so this has to be what the machine sustains, or simulated time runs slower than the clock and the arm lags its model.",
+)
 parser.add_argument(
     "--camera",
     action="store_true",
@@ -459,17 +466,22 @@ for index, arm in enumerate(arms):
     print(f"scene: {arm} at {root}, on /{topic}/joint_states and /{topic}/joint_commands, cell on /{topic}/cell")
 
 simulation_app.update()
-SimulationManager.setup_simulation(dt=1.0 / 60.0, device="cpu")
+SimulationManager.setup_simulation(dt=1.0 / args.hz, device="cpu")
 app_utils.play()
 simulation_app.update()
 print("scene: playing")
 
 frames = 0
+started = time.monotonic()
 
 while simulation_app.is_running():
     rclpy.spin_once(ros, timeout_sec=0)
     simulation_app.update()
     frames += 1
+
+    # Simulated seconds against wall seconds: under 1.0 the machine is not keeping up with --hz.
+    if frames % (args.hz * 10) == 0:
+        print(f"scene: real-time factor {frames / args.hz / (time.monotonic() - started):.2f} at {args.hz} Hz")
 
     # Ten times a second, each cell says what it sees.
     if frames % 6 == 0:
