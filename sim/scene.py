@@ -54,6 +54,7 @@ app_utils.enable_extension("isaacsim.ros2.bridge")
 simulation_app.update()
 
 import rclpy  # noqa: E402  (the bridge extension's own ROS 2)
+from rclpy.qos import DurabilityPolicy, QoSProfile  # noqa: E402
 from std_msgs.msg import Bool, String  # noqa: E402
 
 # Acceleration drives, so the gains mean the same whatever a link weighs: a
@@ -260,8 +261,11 @@ class Cell:
         self.held: str | None = None
         self.joint = f"{self.root}/vacuum"
         stage.DefinePrim(self.root, "Xform")
-        node.create_subscription(String, f"/{topic}/cell", self.guarded(self.on_cell), 10)
-        node.create_subscription(Bool, f"/{topic}/vacuum", self.guarded(self.on_vacuum), 10)
+        # Latched on the bridge's side, so a simulator that starts late, or starts over, gets the last of each;
+        # the subscription has to ask for that history, or it starts with an empty cell.
+        kept = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        node.create_subscription(String, f"/{topic}/cell", self.guarded(self.on_cell), kept)
+        node.create_subscription(Bool, f"/{topic}/vacuum", self.guarded(self.on_vacuum), kept)
         # What the cell actually looks like, for the hub to correct its picture by: the physics' word today,
         # a perception stack's tomorrow, on the same topic.
         self.seen = node.create_publisher(String, f"/{topic}/seen", 10)
