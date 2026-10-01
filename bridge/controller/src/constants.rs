@@ -78,6 +78,13 @@ pub const STALLED: f64 = 0.5;
 /// How little the physical pad may move over `STALLED`, in metres, and still count as stopped.
 pub const STILL: f64 = 0.005;
 
+/// How close a physical arm's pad must be to where the goal puts it, in metres, to count as there: judged at the
+/// pad rather than the joints, since gravity leaves a joint or two short however long the arm waits.
+pub const NEAR: f64 = 0.03;
+
+/// The same, for a swing waypoint the arm passes through without stopping.
+pub const PASSING_NEAR: f64 = 0.1;
+
 /// How close a stopped pad must be to where the goal would put it, in metres, for the stop to count as arrival: a
 /// pad pressed onto a case top comes no closer however long it tries. Measured at the pad, not the joints: small
 /// joint errors add up to a pad far from a case, and a vacuum switched on there takes nothing.
