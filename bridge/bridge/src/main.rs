@@ -325,15 +325,22 @@ async fn receive(bytes: &[u8], arms: &Shared, ros: &Ros) {
         None => return,
     };
 
-    // An arm's topics come with the arm.
+    let fresh = !guard.controllers.contains_key(&id);
+
+    // An arm's topics come with the arm, and a fresh arm starts with an empty cell: whatever the simulator
+    // still holds from the session before would otherwise pass for this one's cases, under the same ids.
     #[cfg(feature = "ros2")]
     if let Some(ros) = ros {
         if let Err(error) = ros.arm(&id) {
             warn!(arm = %id, %error, "no ROS 2 topics for the arm");
         }
+
+        if fresh {
+            ros.cell(&id, &[], &[], &[]);
+        }
     }
     #[cfg(not(feature = "ros2"))]
-    let _ = ros;
+    let _ = (ros, fresh);
 
     match message.body {
         Some(Body::Command(command)) => match convert::command(command) {

@@ -211,6 +211,10 @@ impl Ros {
                 .collect::<Vec<_>>()
                 .join(",")
         };
+        if cases.is_empty() && pallets.is_empty() && belts.is_empty() {
+            info!(arm = id, "cell cleared");
+        }
+
         let data = format!(
             r#"{{"cases":[{}],"pallets":[{}],"belts":[{}]}}"#,
             boxes(cases),
