@@ -88,7 +88,11 @@ pub const PASSING_NEAR: f64 = 0.1;
 /// How close a stopped pad must be to where the goal would put it, in metres, for the stop to count as arrival: a
 /// pad pressed onto a case top comes no closer however long it tries. Measured at the pad, not the joints: small
 /// joint errors add up to a pad far from a case, and a vacuum switched on there takes nothing.
-pub const BLOCKED: f64 = 0.05;
+pub const BLOCKED: f64 = 0.1;
+
+/// How long a move may stay stalled short of its goal, in seconds, before the arm says it is held by contact and
+/// the station plans again from where it is. Waiting longer helps nothing: what stops it is not going away.
+pub const STUCK: f64 = 2.0;
 
 /// The same, for the move down onto a place: a case that has come to rest on something short of the planned spot is
 /// down, whatever the plan thought stood there, and holding it pressed there helps nothing.

@@ -256,7 +256,7 @@ fn a_move_is_not_done_until_the_physics_have_arrived() {
     controller.command(planned(vec![swing(target)], 1, None));
 
     // The physics never move: the servo model arrives, the step does not complete.
-    for _ in 0..8000 {
+    for _ in 0..1500 {
         controller.observe(start);
         controller.tick(TICK);
     }
@@ -304,7 +304,7 @@ fn a_move_is_not_done_while_the_physics_stop_far_from_the_goal() {
     }
 
     assert_eq!(controller.telemetry().step, 0);
-    assert_eq!(controller.telemetry().state, State::Running);
+    assert_eq!(controller.telemetry().state, State::Held);
 }
 
 #[test]
@@ -345,4 +345,31 @@ fn the_vacuum_waits_for_the_physics_to_arrive() {
     }
 
     assert_eq!(controller.telemetry().holding.as_deref(), Some("c1"));
+}
+
+#[test]
+fn a_move_the_physics_cannot_finish_is_a_hold_by_contact() {
+    let mut controller = Controller::new(ARM);
+    let target = Point { x: 0.8, y: 0.9, z: 1.4 };
+    let goal = solve(&target, 0.0, 0.0);
+    // Stopped a good way off: a case under the pad, or a stack in the way.
+    let short = Joints { shoulder: goal.shoulder + 0.3, ..goal };
+
+    controller.command(planned(vec![swing(target)], 1, None));
+
+    let mut reports = Vec::new();
+
+    for _ in 0..6000 {
+        controller.observe(short);
+        controller.tick(TICK);
+        reports.extend(controller.drain());
+    }
+
+    let held = reports.iter().find_map(|report| match report {
+        Report::Held { cause, seen } => Some((*cause, seen.clone())),
+        _ => None,
+    });
+
+    assert_eq!(held, Some((Cause::Sensor, vec!["contact".to_owned()])));
+    assert_eq!(controller.telemetry().state, State::Held);
 }
