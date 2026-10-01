@@ -310,6 +310,12 @@ class Cell:
             if belt["id"] not in self.belts:
                 self.belts[belt["id"]] = self.box(self.name("belt"), belt, rigid=False, colour=Gf.Vec3f(0.15, 0.15, 0.15))
 
+        # An empty cell is a new session: the vacuum lets go and everything goes, held case included.
+        if not wanted and self.held is not None:
+            stage.RemovePrim(self.joint)
+            self.held = None
+            self.vacuum = False
+
         for case_id, one in wanted.items():
             if case_id not in self.cases:
                 self.cases[case_id] = self.box(self.name("case"), one, rigid=True, colour=Gf.Vec3f(0.65, 0.85, 0.45))
@@ -317,6 +323,13 @@ class Cell:
         for case_id in list(self.cases):
             if case_id not in wanted and case_id != self.held:
                 stage.RemovePrim(self.cases.pop(case_id))
+
+        # Pallets and belt pads the hub no longer lists went with their layout.
+        for kind, listed in (("pallets", self.pallets), ("belts", self.belts)):
+            keep = {one["id"] for one in cell.get(kind, [])}
+
+            for stale in [one for one in listed if one not in keep]:
+                stage.RemovePrim(listed.pop(stale))
 
         print(f"scene: {self.arm} cell has {len(self.cases)} cases, {len(self.pallets)} pallets, {len(self.belts)} belt pads")
 
