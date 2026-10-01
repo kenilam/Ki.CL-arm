@@ -27,7 +27,7 @@ parser.add_argument("--test", action="store_true", help="Run a few frames and ex
 parser.add_argument(
     "--hz",
     type=int,
-    default=40,
+    default=60,
     help="Physics steps per second. The loop renders once per step, so this has to be what the machine sustains, or simulated time runs slower than the clock and the arm lags its model.",
 )
 parser.add_argument(
