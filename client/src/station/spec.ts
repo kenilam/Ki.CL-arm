@@ -22,6 +22,8 @@ type Case = {
 type World = {
   cases: Record<string, Case>;
   obstacles: Box[];
+  /** How much higher than the stacks a swing has to go here, in metres: an arm with a body runs lower than its model. */
+  headroom?: number;
 };
 
 /** An axis-aligned box by its lowest and highest corners. */

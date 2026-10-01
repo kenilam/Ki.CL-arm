@@ -152,6 +152,7 @@ const known = (station: Station) => {
 const world = (station: Station): World => ({
   cases: station.cases,
   obstacles: known(station),
+  headroom: headroom(station),
 });
 
 /** Tells the watchers where every case is now. */
