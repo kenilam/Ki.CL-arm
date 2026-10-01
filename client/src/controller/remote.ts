@@ -122,14 +122,11 @@ const dial = (address: string, reopened: () => void = () => {}) => {
 
           return () => own.delete(handler);
         },
+        // Only this arm's ear comes off the wire: the socket stays up for the next link, so putting the
+        // arms back on the bridge costs nothing. The hub closes the wire itself when it is done with it.
         close: () => {
           own.clear();
           handlers.delete(arm);
-
-          // The last link off the wire takes the socket with it.
-          if (!handlers.size) {
-            shut();
-          }
         },
       };
     },
@@ -139,5 +136,5 @@ const dial = (address: string, reopened: () => void = () => {}) => {
 
 type Wire = ReturnType<typeof dial>;
 
-export { dial };
+export { dial, resolve };
 export type { Wire };
