@@ -3,7 +3,7 @@ import type { Box, Link } from '../protocol';
 
 // Model
 import { hitting } from '../model/body';
-import { ceiling, inside } from '../model/kinematics';
+import { ceiling, forward, inside } from '../model/kinematics';
 
 // Grid
 import { childCentre } from '../grid/child';
@@ -21,7 +21,7 @@ import {
 import type { Board, Capacity, Target } from '../hub/board';
 
 // Constants
-import { ROOM, SETTLE } from './constants';
+import { ARRIVE, CLOSE, ROOM, SETTLE } from './constants';
 
 // Partials
 import {
@@ -402,7 +402,6 @@ const create = ({
       }
 
       stop();
-      dialling = null;
 
       // Where the old arm stood and how far into its job it was, before the greet clears the telemetry.
       const stood = station.telemetry?.joints;
@@ -429,11 +428,48 @@ const create = ({
         });
       }
 
-      if (job) {
-        dispatch(station, job, job.moves, job.skip + step);
-      }
+      const resume = () => {
+        settle();
+        dialling = null;
 
-      show(station);
+        if (job) {
+          dispatch(station, job, job.moves, job.skip + step);
+        }
+
+        show(station);
+      };
+
+      // An arm with a body has to get there first: the floor stays paused until its pad is at the pose the
+      // old arm left, or it has had its time. An arm that is its own model is there at once.
+      const wanted = stood ? forward(stood) : null;
+      const until = setTimeout(resume, ARRIVE);
+      const settle = to.listen((each) => {
+        if (each.type !== 'telemetry') {
+          return;
+        }
+
+        const there =
+          !each.target ||
+          !wanted ||
+          Math.hypot(
+            each.pad.at.x - wanted.x,
+            each.pad.at.y - wanted.y,
+            each.pad.at.z - wanted.z
+          ) < CLOSE;
+
+        if (there) {
+          clearTimeout(until);
+          resume();
+        }
+      });
+
+      dialling = {
+        link: to,
+        stop: () => {
+          clearTimeout(until);
+          settle();
+        },
+      };
     });
 
     dialling = { link: to, stop };

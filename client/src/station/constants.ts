@@ -24,6 +24,12 @@ const DRIFT = 0.02;
 /** How far a seen case has to be from its place to be said in the log, in metres. */
 const STRAYED = 0.1;
 
+/** How close a physical arm's pad must be to the pose it takes over, in metres, before the floor moves on. */
+const CLOSE = 0.05;
+
+/** How long the floor waits for a physical arm to get there, in milliseconds, before moving on regardless. */
+const ARRIVE = 6000;
+
 const SETTLE = 0.4;
 
-export { DECK, DRIFT, LOOKOUT, RESEND, ROOM, SETTLE, STRAYED };
+export { ARRIVE, CLOSE, DECK, DRIFT, LOOKOUT, RESEND, ROOM, SETTLE, STRAYED };
