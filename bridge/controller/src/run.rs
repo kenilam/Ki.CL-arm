@@ -147,14 +147,12 @@ pub fn run(arm: &mut Arm, dt: f64) {
                 BLOCKED
             };
             let within = (ease == Ease::Swing && next_is_move).then_some(PASSING);
+            // A swing waypoint the arm passes through is the model's alone: holding the streamed target there
+            // until the physics caught up made them brake into every waypoint and pull away again. The physics
+            // follow a little behind and have to be there only where a move ends.
             let done = finished(&segment)
                 && settled(&arm.drive.joints, &arm.goal, within)
-                && arrived(
-                    arm,
-                    within.map_or(FOLLOWED, |passing| passing.max(FOLLOWED)),
-                    if within.is_some() { PASSING_NEAR } else { NEAR },
-                    short,
-                );
+                && (within.is_some() || arrived(arm, FOLLOWED, NEAR, short));
 
             let stopped_short = finished(&segment) && arm.stalled && !done;
 
