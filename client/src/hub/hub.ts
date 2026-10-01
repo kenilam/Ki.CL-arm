@@ -366,7 +366,15 @@ const create = ({
     }
 
     alarms.delete(found.id);
-    feed(found.id, shifted(hex));
+    // The cell as the new floor has it, with no cases yet: a simulator staging it drops whatever the floor
+    // before left standing there, which under the same ids would pass for this floor's cases.
+    feed(
+      found.id,
+      shifted(hex),
+      [],
+      pallets(found.layout),
+      belts(found.layout)
+    );
     found.load(shifted(hex));
   };
 
