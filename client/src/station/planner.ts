@@ -11,6 +11,7 @@ import { type Belt, type Layout, onBelt, type Vector } from '../grid/layout';
 // Partials
 import { line, transfer, type Surroundings } from './motion';
 import { spots } from './placement';
+import { headroom } from './state';
 import { cases, extent, over, place, remove } from './world';
 
 // Spec
@@ -195,7 +196,7 @@ const carry = (
       [facing, spot.facing],
       carried,
       surroundings(lifted, own.id),
-      Math.max(highest(lifted, own.id), envelope(layout)),
+      Math.max(highest(lifted, own.id), envelope(layout)) + headroom(station),
       { rise: true, fall: true }
     );
 
@@ -335,7 +336,7 @@ const plan = (
       [facing, own.yaw],
       undefined,
       surroundings(cell, id),
-      Math.max(highest(cell, id), envelope(layout)),
+      Math.max(highest(cell, id), envelope(layout)) + headroom(station),
       { rise: inContact, fall: true }
     );
 

@@ -30,6 +30,23 @@ const CLOSE = 0.05;
 /** How long the floor waits for a physical arm to get there, in milliseconds, before moving on regardless. */
 const ARRIVE = 6000;
 
+/**
+ * How much lower a physical arm runs than its model, in metres: gravity and drive lag together. Swings for an arm
+ * with a body clear the stacks by this much more, so a case it carries does not clip what it swings over.
+ */
+const SAG = 0.12;
+
 const SETTLE = 0.4;
 
-export { ARRIVE, CLOSE, DECK, DRIFT, LOOKOUT, RESEND, ROOM, SETTLE, STRAYED };
+export {
+  ARRIVE,
+  CLOSE,
+  DECK,
+  DRIFT,
+  LOOKOUT,
+  RESEND,
+  ROOM,
+  SAG,
+  SETTLE,
+  STRAYED,
+};

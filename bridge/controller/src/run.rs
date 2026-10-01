@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::constants::{BLOCKED, FOLLOWED, PASSING, PLACING, SCAN, STALLED, STILL};
+use crate::constants::{BLOCKED, FOLLOWED, NEAR, PASSING, PASSING_NEAR, PLACING, SCAN, STALLED, STILL};
 use crate::kinematics::{forward, solve};
 use crate::motion::{advance, begin, finished, pose};
 use crate::sensors::sense;
@@ -95,11 +95,13 @@ fn track(arm: &mut Arm) {
 /// Whether the arm's physical joints, when something reports them, are within `within` of the goal, or have stopped
 /// with the pad within `BLOCKED` of where the goal puts it: a pad pressed onto a case comes no closer. The vacuum is
 /// the controller's own, so it is not the physics' to be behind on.
-fn arrived(arm: &Arm, within: f64, short: f64) -> bool {
+fn arrived(arm: &Arm, within: f64, near: f64, short: f64) -> bool {
     arm.measured.is_none_or(|mut measured| {
         measured.grip = arm.goal.grip;
 
-        settled(&measured, &arm.goal, Some(within)) || (arm.stalled && blocked(&measured, &arm.goal, short))
+        settled(&measured, &arm.goal, Some(within))
+            || blocked(&measured, &arm.goal, near)
+            || (arm.stalled && blocked(&measured, &arm.goal, short))
     })
 }
 
@@ -144,7 +146,12 @@ pub fn run(arm: &mut Arm, dt: f64) {
             let within = (ease == Ease::Swing && next_is_move).then_some(PASSING);
             let done = finished(&segment)
                 && settled(&arm.drive.joints, &arm.goal, within)
-                && arrived(arm, within.map_or(FOLLOWED, |passing| passing.max(FOLLOWED)), short);
+                && arrived(
+                    arm,
+                    within.map_or(FOLLOWED, |passing| passing.max(FOLLOWED)),
+                    if within.is_some() { PASSING_NEAR } else { NEAR },
+                    short,
+                );
 
             arm.segment = Some(segment);
 
@@ -157,7 +164,7 @@ pub fn run(arm: &mut Arm, dt: f64) {
 
             // The vacuum switches only once the physical arm is at the pose too: switched on the model's say-so, it
             // would let a case go from wherever the physics still are.
-            if arm.goal.grip != wanted && arrived(arm, FOLLOWED, BLOCKED) {
+            if arm.goal.grip != wanted && arrived(arm, FOLLOWED, NEAR, BLOCKED) {
                 arm.goal.grip = wanted;
             }
 
@@ -167,7 +174,7 @@ pub fn run(arm: &mut Arm, dt: f64) {
             // may have shoved the pad, and a case let go may have dropped the pad a little.
             if arm.goal.grip == wanted
                 && settled(&arm.drive.joints, &arm.goal, None)
-                && (arrived(arm, FOLLOWED, PLACING) || arm.stalled)
+                && (arrived(arm, FOLLOWED, NEAR, PLACING) || arm.stalled)
             {
                 arm.holding = picking.then_some(case);
                 complete(arm);

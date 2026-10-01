@@ -9,6 +9,9 @@ import type { Belt, Layout, Vector } from '../grid/layout';
 import type { instructions } from './planner';
 import { vision } from './vision';
 
+// Constants
+import { SAG } from './constants';
+
 // Events
 import type { Event, Level, Rider } from './events';
 
@@ -178,7 +181,10 @@ const send = (station: Station, steps: Instruction[]) => {
   return station.revision;
 };
 
+/** How much higher this arm's swings go: `SAG` for an arm with a body behind its telemetry, nothing for a model. */
+const headroom = (station: Station) => (station.telemetry?.target ? SAG : 0);
+
 /** How a case reads in the log: its id alone, which says what it is. */
 const label = (id: string) => id;
-export { boot, known, label, note, say, send, show, world };
+export { boot, headroom, known, label, note, say, send, show, world };
 export type { Job, Order, Station };

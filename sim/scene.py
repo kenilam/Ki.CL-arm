@@ -56,7 +56,7 @@ from std_msgs.msg import Bool, String  # noqa: E402
 # over critically damped. The controller streams a moving target with its own
 # speed and acceleration caps, so the drive only has to follow. Stiff enough
 # that gravity sag stays inside the controller's FOLLOWED tolerance.
-FREQUENCY = 50.0
+FREQUENCY = 80.0
 CASE_MASS = 2.0
 STIFFNESS = FREQUENCY**2
 DAMPING = 2.2 * FREQUENCY

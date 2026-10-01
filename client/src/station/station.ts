@@ -49,6 +49,7 @@ import {
   show,
   type Station as State,
   world,
+  headroom,
 } from './state';
 import { cases as standing, extent } from './world';
 
@@ -656,7 +657,8 @@ const create = ({
         [pad.facing, 0],
         undefined,
         { cases: others, obstacles: known(station) },
-        Math.max(0, ...others.map(({ max }) => max.y), belt.height + 0.45),
+        Math.max(0, ...others.map(({ max }) => max.y), belt.height + 0.45) +
+          headroom(station),
         { rise: station.touching, fall: false }
       );
 
