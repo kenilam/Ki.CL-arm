@@ -137,14 +137,17 @@ pub fn run(arm: &mut Arm, dt: f64) {
 
             // A swing into another move passes through; anything else is reached exactly.
             let next = arm.plan.as_ref().and_then(|plan| plan.instructions.get(arm.step as usize + 1));
-            let next_is_move = next.is_some_and(|next| matches!(next, Instruction::Move { .. }));
+            // Only a swing into another swing is passed through. Before a descent the physics must have caught
+            // up, or the pad comes down wherever they still are, into the cases beside the spot.
+            let next_is_swing =
+                next.is_some_and(|next| matches!(next, Instruction::Move { ease: Ease::Swing, .. }));
             // Down onto a place, a stop short is the case resting on something: that is down.
             let short = if next.is_some_and(|next| matches!(next, Instruction::Place { .. })) {
                 PLACING
             } else {
                 BLOCKED
             };
-            let within = (ease == Ease::Swing && next_is_move).then_some(PASSING);
+            let within = (ease == Ease::Swing && next_is_swing).then_some(PASSING);
             // A swing waypoint the arm passes through is the model's alone: holding the streamed target there
             // until the physics caught up made them brake into every waypoint and pull away again. The physics
             // follow a little behind and have to be there only where a move ends.

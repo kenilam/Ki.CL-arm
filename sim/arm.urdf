@@ -28,7 +28,7 @@
   <joint name="yaw" type="continuous">
     <parent link="base"/><child link="turret"/>
     <origin xyz="0 0 0.2"/><axis xyz="0 0 1"/>
-    <limit effort="20000" velocity="1.2"/>
+    <limit effort="20000" velocity="1.8"/>
   </joint>
 
   <link name="turret">
@@ -41,7 +41,7 @@
   <joint name="shoulder" type="revolute">
     <parent link="turret"/><child link="upper"/>
     <origin xyz="0 0 0.52"/><axis xyz="0 -1 0"/>
-    <limit lower="-1.6" upper="3.2" effort="20000" velocity="2"/>
+    <limit lower="-1.6" upper="3.2" effort="20000" velocity="3"/>
   </joint>
 
   <!-- LINK.upper. It sits SIDE to one side of the turret, for the look; the chain itself is in one plane. -->
@@ -54,7 +54,7 @@
   <joint name="elbow" type="revolute">
     <parent link="upper"/><child link="fore"/>
     <origin xyz="1.25 0 0"/><axis xyz="0 1 0"/>
-    <limit lower="-0.2" upper="3.3" effort="20000" velocity="2"/>
+    <limit lower="-0.2" upper="3.3" effort="20000" velocity="3"/>
   </joint>
 
   <!-- LINK.fore -->
@@ -67,7 +67,7 @@
   <joint name="wrist" type="revolute">
     <parent link="fore"/><child link="hand"/>
     <origin xyz="1.1 0 0"/><axis xyz="0 -1 0"/>
-    <limit lower="-4.0" upper="2.0" effort="20000" velocity="2"/>
+    <limit lower="-4.0" upper="2.0" effort="20000" velocity="3"/>
   </joint>
 
   <link name="hand">
@@ -78,7 +78,7 @@
   <joint name="roll" type="continuous">
     <parent link="hand"/><child link="gripper"/>
     <origin xyz="0 0 0"/><axis xyz="-1 0 0"/>
-    <limit effort="5000" velocity="2"/>
+    <limit effort="5000" velocity="3"/>
   </joint>
 
   <!-- LINK.hand from the wrist to the face of the suction pad; GRIPPER width by depth. -->
