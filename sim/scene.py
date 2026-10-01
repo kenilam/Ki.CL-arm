@@ -23,6 +23,11 @@ parser.add_argument("--urdf", default=os.path.join(os.path.dirname(os.path.abspa
 parser.add_argument("--out", default="/arm/sim/usd", help="Where the converted USD is written.")
 parser.add_argument("--spacing", type=float, default=4.0, help="Metres between arms, along the stage's Y.")
 parser.add_argument("--test", action="store_true", help="Run a few frames and exit.")
+parser.add_argument(
+    "--camera",
+    action="store_true",
+    help="A camera over each cell on ROS 2. Rendering it costs the physics their real-time rate, so only with a perception stack reading it.",
+)
 args, _ = parser.parse_known_args()
 
 simulation_app = SimulationApp({"headless": True})
@@ -441,11 +446,12 @@ for index, arm in enumerate(arms):
     wire(topic, root, clock=index == 0)
     cells.append(Cell(ros, arm, topic, Gf.Vec3d(0, index * args.spacing, 0), path))
 
-    try:
-        camera(topic, Gf.Vec3d(0, index * args.spacing, 0))
-        print(f"scene: {arm} camera on /{topic}/camera/color, /{topic}/camera/depth and /{topic}/camera/camera_info")
-    except Exception as error:  # noqa: BLE001
-        print(f"scene: {arm} camera not set up: {error!r}")
+    if args.camera:
+        try:
+            camera(topic, Gf.Vec3d(0, index * args.spacing, 0))
+            print(f"scene: {arm} camera on /{topic}/camera/color, /{topic}/camera/depth and /{topic}/camera/camera_info")
+        except Exception as error:  # noqa: BLE001
+            print(f"scene: {arm} camera not set up: {error!r}")
     print(f"scene: {arm} at {root}, on /{topic}/joint_states and /{topic}/joint_commands, cell on /{topic}/cell")
 
 simulation_app.update()
