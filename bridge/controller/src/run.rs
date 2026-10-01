@@ -2,9 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::constants::{
-    BLOCKED, FOLLOWED, NEAR, PASSING, PASSING_NEAR, PLACING, SCAN, STALLED, STILL, STUCK,
-};
+use crate::constants::{BLOCKED, FOLLOWED, NEAR, PASSING, PLACING, SCAN, STALLED, STILL, STUCK};
 use crate::kinematics::{forward, solve};
 use crate::motion::{advance, begin, finished, pose};
 use crate::sensors::sense;
