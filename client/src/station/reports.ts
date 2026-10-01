@@ -8,7 +8,7 @@ import { REST } from '../model/constants';
 import { alongBelt } from '../grid/layout';
 
 // Partials
-import { cancel, retry } from './jobs';
+import { cancel, replan, retry } from './jobs';
 import { DRIFT, RESEND, STRAYED } from './constants';
 import { label, note, say, send, show, type Station, world } from './state';
 import { place, remove } from './world';
@@ -60,13 +60,22 @@ const handle = (station: Station, report: Report) => {
       return observe(station, report);
     case 'held':
       if (report.cause === 'sensor') {
-        report.seen.forEach((id) => station.sensed.add(id));
         note(
           station,
           `${report.seen.join(', ')} in the way`,
           'warning',
           'planning again'
         );
+
+        // A hold by contact names nothing the planner could route round: the physics stopped short of a
+        // pose. The only answer is a new plan from where the arm is, now.
+        if (report.seen.includes('contact')) {
+          replan(station);
+
+          return;
+        }
+
+        report.seen.forEach((id) => station.sensed.add(id));
         station.dirty = true;
       }
 
