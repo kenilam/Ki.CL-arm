@@ -32,6 +32,8 @@ pub struct Arm {
     /// The physical joints as they were `STALLED` seconds ago, with the clock then, and whether they have moved since.
     pub seen: Option<(f64, Joints)>,
     pub stalled: bool,
+    /// How long the move under way has been stalled short of its goal.
+    pub stuck: f64,
     /// What is physically around the arm, for its sensors to meet.
     pub boxes: Vec<Obstacle>,
     pub scanned: f64,
@@ -60,6 +62,7 @@ pub fn boot(id: &str) -> Arm {
         measured: None,
         seen: None,
         stalled: false,
+        stuck: 0.0,
         boxes: Vec::new(),
         scanned: 0.0,
         clock: 0.0,

@@ -2,7 +2,9 @@
 
 use std::collections::HashSet;
 
-use crate::constants::{BLOCKED, FOLLOWED, NEAR, PASSING, PASSING_NEAR, PLACING, SCAN, STALLED, STILL};
+use crate::constants::{
+    BLOCKED, FOLLOWED, NEAR, PASSING, PASSING_NEAR, PLACING, SCAN, STALLED, STILL, STUCK,
+};
 use crate::kinematics::{forward, solve};
 use crate::motion::{advance, begin, finished, pose};
 use crate::sensors::sense;
@@ -26,6 +28,7 @@ fn complete(arm: &mut Arm) {
     // A stop against the last goal says nothing about the next.
     arm.seen = None;
     arm.stalled = false;
+    arm.stuck = 0.0;
 
     if let Some(pending) = arm.pending.take() {
         // Kept back through a grip: what the arm holds has changed since it was checked, so it is checked again.
@@ -153,10 +156,26 @@ pub fn run(arm: &mut Arm, dt: f64) {
                     short,
                 );
 
+            let stopped_short = finished(&segment) && arm.stalled && !done;
+
             arm.segment = Some(segment);
 
             if done {
+                arm.stuck = 0.0;
                 complete(arm);
+            } else if stopped_short {
+                // The physics have stopped and the pad is not where the plan wants it: something is in the way the
+                // plan did not know of. Said as a hold by contact, which the station answers with a new plan.
+                arm.stuck += dt;
+
+                if arm.stuck >= STUCK {
+                    arm.stuck = 0.0;
+                    arm.state = State::Held;
+                    arm.cause = Cause::Sensor;
+                    say(arm, Report::Held { cause: Cause::Sensor, seen: vec!["contact".to_owned()] });
+                }
+            } else {
+                arm.stuck = 0.0;
             }
         }
         Instruction::Pick { case } | Instruction::Place { case } => {
