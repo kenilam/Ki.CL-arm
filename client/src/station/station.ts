@@ -370,8 +370,31 @@ const create = ({
     say(station, { type: 'linked', where: station.link.where });
   };
 
-  /** Greets the arm again over the link it has: for an arm that restarted while the hub ran on. */
-  const wake = () => greet();
+  /**
+   * Greets the arm again over the link it has, for an arm that restarted while the hub ran on, and hands it
+   * what the one before it had: where it stood, what it held, and the job from the step it was on.
+   */
+  const wake = () => {
+    const stood = station.telemetry?.joints;
+    const step = current(station) ?? 0;
+    const { holding, job } = station;
+
+    greet();
+    station.homing = false;
+
+    if (stood) {
+      station.link.send({
+        type: 'seed',
+        arm: id,
+        joints: stood,
+        holding: holding?.id ?? null,
+      });
+    }
+
+    if (job) {
+      dispatch(station, job, job.moves, job.skip + step);
+    }
+  };
 
   /**
    * Puts the arm on `to` instead of the link it has now, at once. The job
