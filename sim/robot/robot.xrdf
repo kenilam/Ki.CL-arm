@@ -1,0 +1,97 @@
+# Generated from client/src/robot/spec.ts by make assets. Do not edit.
+format: xrdf
+format_version: 2.0
+
+default_joint_positions:
+  base: 0
+  shoulder: 0.3
+  elbow: 0.6
+  wrist: -0.9
+  flange: 0
+
+cspace:
+  joint_names:
+    - "base"
+    - "shoulder"
+    - "elbow"
+    - "wrist"
+    - "flange"
+  acceleration_limits: [10, 10, 10, 10, 10]
+  jerk_limits: [5000, 5000, 5000, 5000, 5000]
+
+tool_frames: ["pad"]
+
+world_collision:
+  geometry: "arm_spheres"
+
+self_collision:
+  geometry: "arm_spheres"
+  ignore:
+    turret: ["upper_arm", "forearm"]
+    upper_arm: ["forearm", "wrist_link"]
+    forearm: ["wrist_link", "flange_link"]
+    wrist_link: ["flange_link", "pad"]
+    flange_link: ["pad"]
+
+geometry:
+  arm_spheres:
+    spheres:
+      turret:
+        - center: [0, 0, 0]
+          radius: 0.135
+        - center: [0.04, 0, 0.16]
+          radius: 0.135
+        - center: [0.08, 0, 0.32]
+          radius: 0.135
+        - center: [0.12, 0, 0.48]
+          radius: 0.135
+        - center: [0.16, 0, 0.64]
+          radius: 0.135
+        - center: [0.2, 0, 0.8]
+          radius: 0.135
+      upper_arm:
+        - center: [0, 0, 0]
+          radius: 0.135
+        - center: [0, 0, 0.178571]
+          radius: 0.135
+        - center: [0, 0, 0.357143]
+          radius: 0.135
+        - center: [0, 0, 0.535714]
+          radius: 0.135
+        - center: [0, 0, 0.714286]
+          radius: 0.135
+        - center: [0, 0, 0.892857]
+          radius: 0.135
+        - center: [0, 0, 1.071429]
+          radius: 0.135
+        - center: [0, 0, 1.25]
+          radius: 0.135
+      forearm:
+        - center: [0, 0, 0]
+          radius: 0.135
+        - center: [0.192857, 0, 0]
+          radius: 0.135
+        - center: [0.385714, 0, 0]
+          radius: 0.135
+        - center: [0.578571, 0, 0]
+          radius: 0.135
+        - center: [0.771429, 0, 0]
+          radius: 0.135
+        - center: [0.964286, 0, 0]
+          radius: 0.135
+        - center: [1.157143, 0, 0]
+          radius: 0.135
+        - center: [1.35, 0, 0]
+          radius: 0.135
+      wrist_link:
+        - center: [0, 0, 0]
+          radius: 0.135
+        - center: [0, 0, -0.125]
+          radius: 0.135
+        - center: [0, 0, -0.25]
+          radius: 0.135
+      flange_link:
+        - center: [0, 0, 0]
+          radius: 0.135
+        - center: [0, 0, -0.2]
+          radius: 0.135

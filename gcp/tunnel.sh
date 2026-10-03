@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # localhost:LOCAL_PORT here becomes PORT on the machine, over IAP. The local
-# side is 3300 because 3200 here is this repo's own dev server, which still
-# serves the federated remote; Ki.CL's dev server sends /arm/link to
-# KICL_ARM_BRIDGE_URL, so with the tunnel up the page's arms are on the
-# GCP machine and everything else about the page is unchanged.
+# side is 3300 because 3200 is the local bridge, which Ki.CL's KICL_ARM_URL
+# points at for the remote and the link. Ki.CL never dials the machine itself:
+# from step 4 the bridge relays robots switched to physical AI to it.
 source "$(dirname "$0")/env.sh"
 
 LOCAL_PORT="${LOCAL_PORT:-3300}"
 
+# A tunnel left running from last time holds the port; this one takes its place.
+"$here/../scripts/free-port.sh" "$LOCAL_PORT"
+
 echo "localhost:$LOCAL_PORT -> $NAME:$PORT ($BRIDGE, ctrl-c to close)"
-echo "in Ki.CL: KICL_ARM_BRIDGE_URL=http://localhost:$LOCAL_PORT"
 # The bridge's port is closed for a minute while its container rebuilds, and the machine end of a tunnel
 # goes with it: rather than fail, wait and dial again, so a tunnel left running comes back on its own.
 while :; do

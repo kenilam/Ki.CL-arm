@@ -1,0 +1,80 @@
+{
+  "joints": [
+    {
+      "name": "base",
+      "origin": [
+        0,
+        0.3,
+        0
+      ],
+      "axis": "y",
+      "min": -3.141592653589793,
+      "max": 3.141592653589793,
+      "speed": 2
+    },
+    {
+      "name": "shoulder",
+      "origin": [
+        0.2,
+        0.8,
+        0
+      ],
+      "axis": "z",
+      "min": -1.4,
+      "max": 0.7,
+      "speed": 1.6
+    },
+    {
+      "name": "elbow",
+      "origin": [
+        0,
+        1.25,
+        0
+      ],
+      "axis": "z",
+      "min": -1.2,
+      "max": 1.4,
+      "speed": 1.6
+    },
+    {
+      "name": "wrist",
+      "origin": [
+        1.35,
+        0,
+        0
+      ],
+      "axis": "z",
+      "min": -2.6,
+      "max": 2.6,
+      "speed": 3
+    },
+    {
+      "name": "flange",
+      "origin": [
+        0,
+        -0.25,
+        0
+      ],
+      "axis": "y",
+      "min": -3.141592653589793,
+      "max": 3.141592653589793,
+      "speed": 4
+    }
+  ],
+  "tool": [
+    0,
+    -0.2,
+    0
+  ],
+  "pad": {
+    "width": 0.6,
+    "depth": 0.4
+  },
+  "home": {
+    "base": 0,
+    "shoulder": 0.3,
+    "elbow": 0.6,
+    "wrist": -0.9,
+    "flange": 0
+  }
+}
