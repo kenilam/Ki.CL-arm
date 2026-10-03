@@ -1,10 +1,13 @@
-# TypeScript for the wire, into the client. `make codegen`.
+# The wire's code, from proto/: TypeScript for the remote, Python for the twin. `make codegen`.
 version: v2
 inputs:
   - directory: proto
 plugins:
-  - remote: buf.build/bufbuild/es
-    out: client/src/protocol/wire/gen
+  - local: protoc-gen-es
+    out: client/src/brains/wire/gen
     opt:
       - target=ts
-    include_imports: false
+  - remote: buf.build/protocolbuffers/python:v29.3
+    out: sim/twin/wire
+  - remote: buf.build/protocolbuffers/pyi:v29.3
+    out: sim/twin/wire

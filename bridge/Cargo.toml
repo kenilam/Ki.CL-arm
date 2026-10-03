@@ -1,15 +1,19 @@
-# The arm side of the wire, in Rust: the wire's types from proto/, the
-# controller (the same one the browser runs in TypeScript today), and the
-# bridge that listens on the machine's 3200 and puts an arm behind each id.
-[workspace]
-resolver = "2"
-members = ["wire", "controller", "bridge"]
-
-[workspace.package]
-version = "0.0.1"
+[package]
+name = "robot-bridge"
+version = "0.1.0"
 edition = "2024"
-license = "ISC"
 
-[workspace.dependencies]
-prost = "0.14"
-bytes = "1"
+[dependencies]
+axum = { version = "0.8.9", features = ["ws"] }
+futures-util = "0.3.34"
+prost = "0.14.4"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+tokio-tungstenite = "0.30.0"
+tower-http = { version = "0.7.1", features = ["fs"] }
+
+[build-dependencies]
+prost-build = "0.14.4"
+protox = "0.9.1"
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["io-util"] }

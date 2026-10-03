@@ -1,0 +1,174 @@
+syntax = "proto3";
+
+// The frames between a robot on the Ki.CL floor and a brain behind the
+// bridge. They mirror `client/src/frames.ts`: change the two together. One
+// WebSocket carries every robot on a page; each socket frame is one message,
+// with no length prefix.
+package kicl.robot.v1;
+
+// One angle per arm joint, in radians, in chain order.
+message Joints {
+  float base = 1;
+  float shoulder = 2;
+  float elbow = 3;
+  float wrist = 4;
+  float flange = 5;
+}
+
+message Vector {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message Hex {
+  sint32 q = 1;
+  sint32 r = 2;
+}
+
+// One thing an arm's cell camera sees, in the arm's frame.
+message Seen {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_CASE = 1;
+    KIND_PALLET = 2;
+  }
+
+  string id = 1;
+  Kind kind = 2;
+  // Centre of the item's top face.
+  Vector top = 3;
+  float width = 4;
+  float depth = 5;
+  float height = 6;
+  float yaw = 7;
+  // A case at the belt's pick point.
+  bool waiting = 8;
+  // A case on this arm's pad.
+  bool held = 9;
+}
+
+message Gripper {
+  bool vacuum = 1;
+  bool contact = 2;
+  // Kilograms on the pad.
+  float payload = 3;
+}
+
+message ArmSensors {
+  Joints position = 1;
+  Joints velocity = 2;
+  Gripper gripper = 3;
+  repeated Seen vision = 4;
+  // The safety scanner: a person is inside the cell.
+  bool intrusion = 5;
+}
+
+// A job from the fleet manager: go to a hex, face this way, set the deck.
+message Task {
+  string id = 1;
+  Hex to = 2;
+  float facing = 3;
+  bool lift = 4;
+}
+
+message AmrSensors {
+  // Odometry, in floor coordinates.
+  float x = 1;
+  float z = 2;
+  float heading = 3;
+  bool lifted = 4;
+  bool loaded = 5;
+  // Metres to the nearest person ahead; infinity when clear.
+  float proximity = 6;
+  Task task = 7;
+}
+
+message Sensors {
+  string id = 1;
+  uint32 tick = 2;
+  // Seconds since the floor started.
+  double time = 3;
+
+  oneof robot {
+    ArmSensors arm = 4;
+    AmrSensors amr = 5;
+  }
+}
+
+message ArmCommands {
+  Joints target = 1;
+  bool vacuum = 2;
+}
+
+message AmrCommands {
+  float speed = 1;
+  float turn = 2;
+  bool lift = 3;
+  // The task just finished; empty when none.
+  string done = 4;
+}
+
+message Commands {
+  string id = 1;
+  // The sensor tick these answer.
+  uint32 tick = 2;
+
+  oneof robot {
+    ArmCommands arm = 3;
+    AmrCommands amr = 4;
+  }
+}
+
+// The robot as the outgoing brain left it. The incoming brain starts from it,
+// and its first command has to continue from these joints and this grip.
+message Handover {
+  Joints position = 1;
+  Joints velocity = 2;
+  bool vacuum = 3;
+  // The case on the pad; empty when none.
+  string held = 4;
+  // The held case's yaw less the pad's.
+  float grip = 5;
+  // For an AMR: its deck.
+  bool lifted = 6;
+}
+
+// Puts a robot on this socket's brains, from a handover when it comes from
+// another brain.
+message Attach {
+  enum Robot {
+    ROBOT_UNSPECIFIED = 0;
+    ROBOT_ARM = 1;
+    ROBOT_AMR = 2;
+  }
+
+  string id = 1;
+  Robot robot = 2;
+  // For an AMR: the hexes it may not drive through.
+  repeated Hex blocked = 3;
+  Handover handover = 4;
+}
+
+// Takes a robot off this socket's brains.
+message Detach {
+  string id = 1;
+}
+
+message SensorBatch {
+  repeated Sensors frames = 1;
+}
+
+// Page to bridge.
+message ToBridge {
+  oneof message {
+    Attach attach = 1;
+    Detach detach = 2;
+    SensorBatch sensors = 3;
+  }
+}
+
+// Bridge to page: the answers to one sensor batch.
+message FromBridge {
+  repeated Commands commands = 1;
+}
