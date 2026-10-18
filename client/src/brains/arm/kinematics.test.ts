@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { HOME } from 'arm/robot';
+import { HOME, forward } from 'arm/robot';
 
-import { forward, inverse } from './kinematics';
+import { inverse } from './kinematics';
 
 const close = (a: number, b: number, tolerance = 1e-6) =>
   assert.ok(Math.abs(a - b) < tolerance, `${a} is not ${b}`);

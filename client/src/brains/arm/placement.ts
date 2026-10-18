@@ -1,6 +1,7 @@
 import type { Seen } from 'arm/frames';
+import type { Target } from 'arm/robot';
 
-import { inverse, type Target } from './kinematics';
+import { inverse } from './kinematics';
 
 /*
  * Where the next case goes, worked out from what the camera sees each time,

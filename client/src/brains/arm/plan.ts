@@ -1,6 +1,6 @@
 import type { ArmSensors, Seen } from 'arm/frames';
+import { forward, type Target } from 'arm/robot';
 
-import { forward, type Target } from './kinematics';
 import { place } from './placement';
 
 /*

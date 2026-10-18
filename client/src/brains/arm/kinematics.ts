@@ -4,7 +4,6 @@ import {
   JOINTS,
   PIVOT,
   UPPER,
-  forward,
   wrap,
   type Pose,
   type Target,
@@ -54,4 +53,4 @@ const inverse = ({ at, yaw }: Target): Pose | null => {
   return within(pose) ? pose : null;
 };
 
-export { forward, inverse, wrap, type Target };
+export { inverse };

@@ -1,4 +1,4 @@
-import { DIRECTIONS, add, equals, hex, subtract, type Hex } from './hex';
+import { DIRECTIONS, add, equals, hex, neighbours, subtract, type Hex } from './hex';
 
 /*
  * An arm cell is a rosette: one hex and its six neighbours. Rosettes tile the
@@ -28,8 +28,7 @@ const centreOf = (of: Hex): Hex => subtract(of, BY_RESIDUE[residue(of)]);
 const isCentre = (of: Hex) => residue(of) === 0;
 
 /** The six hexes round a centre, where pallets go. */
-const slots = (centre: Hex): Hex[] =>
-  DIRECTIONS.map((direction) => add(centre, direction));
+const slots = (centre: Hex): Hex[] => neighbours(centre);
 
 /** The centre and its six slots. */
 const members = (centre: Hex): Hex[] => [centre, ...slots(centre)];

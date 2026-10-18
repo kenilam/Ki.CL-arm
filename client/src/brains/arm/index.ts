@@ -1,7 +1,6 @@
 import type { ArmCommands, ArmSensors, Handover } from 'arm/frames';
-import { JOINTS, type Pose } from 'arm/robot';
+import { JOINTS, forward, type Pose, type Target } from 'arm/robot';
 
-import { forward, type Target } from './kinematics';
 import { move, sample, type Move } from './motion';
 import { overPallet } from './placement';
 import { plan, type Step } from './plan';

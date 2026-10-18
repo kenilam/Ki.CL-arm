@@ -1,4 +1,4 @@
-import { HOME, JOINTS, PAD, TOOL } from './spec';
+import { HOME, JOINTS, PAD, TOOL, type Joint } from './spec';
 
 /*
  * The arm for Isaac Sim, written from the same spec the floor draws and the
@@ -9,7 +9,7 @@ import { HOME, JOINTS, PAD, TOOL } from './spec';
  * its angle keeps the same sign on both sides.
  */
 
-type Vector = readonly [number, number, number];
+type Vector = Joint['origin'];
 
 const THICKNESS = 0.18;
 
@@ -25,7 +25,7 @@ const toZUp = ([x, y, z]: Vector): Vector => [x, -z, y];
 
 const AXES = { y: '0 0 1', z: '0 -1 0' } as const;
 
-const format = (vector: Vector) =>
+const format = (vector: readonly number[]) =>
   vector.map((value) => Number(value.toFixed(6))).join(' ');
 
 /** The vector from a link's joint to the next joint, or to the pad for the last. */
@@ -102,7 +102,7 @@ const spheres = () =>
     const centres = Array.from(
       { length: count },
       (_, step) =>
-        along.map((value) => (value * step) / (count - 1)) as unknown as Vector
+        along.map((value) => (value * step) / (count - 1))
     );
 
     return `      ${name}:\n${centres
