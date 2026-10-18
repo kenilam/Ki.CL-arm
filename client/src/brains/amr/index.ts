@@ -1,5 +1,6 @@
-import type { AmrCommands, AmrSensors } from 'arm/frames';
+import type { AmrCommands, AmrSensors, Attach } from 'arm/frames';
 import { fromPoint, toPoint, type Point } from 'arm/grid';
+import { wrap } from 'arm/robot';
 
 import { route } from './route';
 
@@ -17,12 +18,10 @@ const ARRIVED = 0.08;
 /** Stop when a person is nearer than this ahead. */
 const STOP = 1.6;
 
-const wrap = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
-
 const clamp = (value: number, limit: number) =>
   Math.max(-limit, Math.min(limit, value));
 
-type Config = { blocked: string[] };
+type Config = Extract<Attach, { robot: 'amr' }>['config'];
 
 const amr = (id: string, { blocked }: Config) => {
   const closed = new Set(blocked);

@@ -1,3 +1,4 @@
+import type { Hex, Point } from 'arm/grid';
 import type { Pose, Vector } from 'arm/robot';
 
 /*
@@ -60,7 +61,7 @@ type ArmCommands = {
 /** A job from the fleet manager: go to a hex, and lift or lower the deck there. */
 type Task = {
   id: string;
-  to: { q: number; r: number };
+  to: Hex;
   /** Facing to arrive at, in radians about y. */
   facing: number;
   lift: boolean;
@@ -71,7 +72,7 @@ type AmrSensors = {
   tick: number;
   time: number;
   /** Odometry, in floor coordinates. */
-  position: { x: number; z: number };
+  position: Point;
   heading: number;
   /** Deck raised, and whether a pallet is on it. */
   lifted: boolean;
@@ -116,15 +117,10 @@ type Handover = {
 };
 
 /** Puts a robot on a set of brains, from a handover when it comes from another. An AMR comes with its map: the hexes, as `q,r` keys, it may not drive through. */
-type Attach =
-  | { type: 'attach'; robot: 'arm'; id: string; handover?: Handover }
-  | {
-      type: 'attach';
-      robot: 'amr';
-      id: string;
-      config: { blocked: string[] };
-      handover?: Handover;
-    };
+type Attach = { type: 'attach'; id: string; handover?: Handover } & (
+  | { robot: 'arm' }
+  | { robot: 'amr'; config: { blocked: string[] } }
+);
 
 /** What the floor sends to its brains, in a worker or across the link. */
 type ToBrains =

@@ -1,6 +1,6 @@
-import { JOINTS, type Pose } from 'arm/robot';
+import { JOINTS, wrap, type Target } from 'arm/robot';
 
-import { inverse, wrap, type Target } from './kinematics';
+import { inverse } from './kinematics';
 
 /*
  * A move takes the pad from one target to the next, interpolating round the
@@ -76,4 +76,4 @@ const move = (from: Target, to: Target): Move | null => {
 const sample = ({ duration: total, from, to }: Move, elapsed: number) =>
   inverse(at(from, to, ease(Math.min(1, Math.max(0, elapsed / total)))));
 
-export { move, sample, type Move, type Pose };
+export { move, sample, type Move };
