@@ -4,3 +4,7 @@ dist/
 !.yarn/releases
 .DS_Store
 .history/
+bridge/target/
+sim/out/
+__pycache__/
+sim/.venv/

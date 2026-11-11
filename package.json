@@ -2,22 +2,19 @@
   "name": "kicl-arm",
   "version": "0.0.1",
   "private": true,
-  "description": "The Ki.CL factory-arm business logic as a federated remote, the wire between its hub and its arms, and the bridge on the far end of it.",
+  "description": "The robots and brains of the Ki.CL robotic-arm floor: the arm federated remote, the frame schema, the Rust bridge that serves both, and the GCP machine.",
   "engines": {
     "node": ">=24"
   },
-  "workspaces": [
-    "client"
-  ],
   "scripts": {
+    "assets": "yarn workspace @ki-cl/arm run assets",
     "breaking": "buf breaking --against '.git#branch=main'",
     "build": "yarn workspace @ki-cl/arm run build",
     "codegen": "buf generate",
-    "development": "concurrently -k -n client,server \"yarn workspace @ki-cl/arm run dev\" \"tsx watch server/index.ts\"",
+    "development": "concurrently -k -n client,bridge \"yarn workspace @ki-cl/arm run dev\" \"cd bridge && cargo run\"",
     "format": "buf format -w",
     "lint": "buf lint",
-    "serve": "tsx server/index.ts",
-    "test": "yarn workspace @ki-cl/arm run test",
+    "test": "yarn workspace @ki-cl/arm run test && cd bridge && cargo test",
     "typecheck": "yarn workspace @ki-cl/arm run typecheck"
   },
   "repository": {
@@ -26,20 +23,13 @@
   },
   "author": "hello@ki-cl.com",
   "license": "ISC",
-  "dependencies": {
-    "cors": "2.8.5",
-    "express": "5.1.0",
-    "ws": "8.22.0"
-  },
   "devDependencies": {
     "@bufbuild/buf": "1.66.0",
-    "@types/cors": "2.8.19",
-    "@types/express": "5.0.3",
-    "@types/node": "26",
-    "@types/ws": "8.18.1",
-    "concurrently": "9.2.1",
-    "tsx": "4.23.15",
-    "typescript": "7"
+    "@bufbuild/protoc-gen-es": "2.16.0",
+    "concurrently": "9.2.1"
   },
-  "packageManager": "yarn@4.17.1"
+  "packageManager": "yarn@4.17.1",
+  "workspaces": [
+    "client"
+  ]
 }

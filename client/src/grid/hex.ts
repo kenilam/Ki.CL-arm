@@ -1,26 +1,20 @@
 /*
- * The floor as hexagons, one arm to a cell, indexed the way H3 does it: axial
- * coordinates, six neighbours each. Flat-topped, so a row of cells runs along z.
+ * One fine axial hex grid over the whole floor, pointy-top, in metres on the
+ * floor plane (x, z). Everything on the floor is located by the hex it is
+ * over; arm cells are built from these hexes in ./cell.
  */
 
-/** A cell's axial coordinates. */
 type Hex = { q: number; r: number };
 
-/** Which of a cell's six sides, counted round from the one at 30° off +x. */
-type Side = 0 | 1 | 2 | 3 | 4 | 5;
+type Point = { x: number; z: number };
 
-/**
- * A cell's inradius in metres: half the distance between two arms' bases.
- * Wide enough for two pallets and a buffer round one arm, close enough that
- * a belt from one arm's drop reaches the next arm's pick.
- */
-const INRADIUS = 2;
+/** Centre to corner, in metres. Flat to flat is √3 times this. */
+const SIZE = 1;
 
-/** From centre to corner. */
-const RADIUS = INRADIUS / (Math.sqrt(3) / 2);
+const SQRT3 = Math.sqrt(3);
 
-/** The axial step to each neighbour, by side. */
-const STEPS: Hex[] = [
+/** The six neighbours' offsets, counter-clockwise from +q. */
+const DIRECTIONS: readonly Hex[] = [
   { q: 1, r: 0 },
   { q: 1, r: -1 },
   { q: 0, r: -1 },
@@ -29,43 +23,57 @@ const STEPS: Hex[] = [
   { q: 0, r: 1 },
 ];
 
-const SIDES: Side[] = [0, 1, 2, 3, 4, 5];
+const hex = (q: number, r: number): Hex => ({ q, r });
 
-const index = ({ q, r }: Hex) => `${q},${r}`;
+const add = (a: Hex, b: Hex): Hex => hex(a.q + b.q, a.r + b.r);
 
-const parse = (key: string): Hex => {
-  const [q, r] = key.split(',').map(Number);
+const subtract = (a: Hex, b: Hex): Hex => hex(a.q - b.q, a.r - b.r);
 
-  return { q, r };
+const equals = (a: Hex, b: Hex) => a.q === b.q && a.r === b.r;
+
+/** A stable string for maps and sets. */
+const key = ({ q, r }: Hex) => `${q},${r}`;
+
+const distance = (a: Hex, b: Hex) => {
+  const { q, r } = subtract(a, b);
+
+  return (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2;
 };
 
-/** Where a cell's centre is on the floor, in metres. */
-const centre = ({ q, r }: Hex) => ({
-  x: RADIUS * 1.5 * q,
-  z: RADIUS * Math.sqrt(3) * (r + q / 2),
-});
+const neighbours = (of: Hex) =>
+  DIRECTIONS.map((direction) => add(of, direction));
 
-const neighbour = ({ q, r }: Hex, side: Side): Hex => ({
-  q: q + STEPS[side].q,
-  r: r + STEPS[side].r,
-});
+/** Every hex within `radius` steps of `centre`, the centre included. */
+const range = (centre: Hex, radius: number) => {
+  const found: Hex[] = [];
 
-/** The heading from a cell's centre out through a side, in radians from +x toward +z. */
-const heading = (side: Side) => {
-  const from = centre({ q: 0, r: 0 });
-  const to = centre(STEPS[side]);
+  for (let q = -radius; q <= radius; q++) {
+    const from = Math.max(-radius, -q - radius);
+    const to = Math.min(radius, -q + radius);
 
-  return Math.atan2(to.z - from.z, to.x - from.x);
+    for (let r = from; r <= to; r++) {
+      found.push(add(centre, hex(q, r)));
+    }
+  }
+
+  return found;
 };
 
-/** The cell a point on the floor is in: the axial coordinates nearest it, rounded as cube coordinates. */
-const at = ({ x, z }: { x: number; z: number }): Hex => {
-  const q = (x * 2) / 3 / RADIUS;
-  const r = (-x / 3 + (Math.sqrt(3) / 3) * z) / RADIUS;
+const toPoint = ({ q, r }: Hex, size = SIZE): Point => ({
+  x: size * SQRT3 * (q + r / 2),
+  z: size * 1.5 * r,
+});
+
+/** The hex a floor point is over. */
+const fromPoint = ({ x, z }: Point, size = SIZE): Hex => {
+  const q = ((SQRT3 / 3) * x - z / 3) / size;
+  const r = ((2 / 3) * z) / size;
   const s = -q - r;
+
   let rq = Math.round(q);
   let rr = Math.round(r);
   const rs = Math.round(s);
+
   const dq = Math.abs(rq - q);
   const dr = Math.abs(rr - r);
   const ds = Math.abs(rs - s);
@@ -76,29 +84,38 @@ const at = ({ x, z }: { x: number; z: number }): Hex => {
     rr = -rq - rs;
   }
 
-  return { q: rq, r: rr };
+  // `|| 0` turns -0 into 0, so keys stay stable.
+  return hex(rq || 0, rr || 0);
 };
 
-/** The side of the neighbour that faces back. */
-const opposite = (side: Side): Side => ((side + 3) % 6) as Side;
+/** The six corners, counter-clockwise from the one at 30°, for drawing. */
+const corners = (of: Hex, size = SIZE): Point[] => {
+  const centre = toPoint(of, size);
 
-/** Which side of `from` faces `to`, if they touch. */
-const facing = (from: Hex, to: Hex) =>
-  SIDES.find(
-    (side) => from.q + STEPS[side].q === to.q && from.r + STEPS[side].r === to.r
-  );
+  return Array.from({ length: 6 }, (_, index) => {
+    const angle = (Math.PI / 180) * (60 * index - 30);
+
+    return {
+      x: centre.x + size * Math.cos(angle),
+      z: centre.z + size * Math.sin(angle),
+    };
+  });
+};
 
 export {
-  INRADIUS,
-  RADIUS,
-  SIDES,
-  at,
-  centre,
-  facing,
-  heading,
-  index,
-  neighbour,
-  opposite,
-  parse,
+  DIRECTIONS,
+  SIZE,
+  add,
+  corners,
+  distance,
+  equals,
+  fromPoint,
+  hex,
+  key,
+  neighbours,
+  range,
+  subtract,
+  toPoint,
+  type Hex,
+  type Point,
 };
-export type { Hex, Side };
