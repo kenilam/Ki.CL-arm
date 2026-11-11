@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { HOME, JOINTS, PAD, TOOL } from '../src/robot/spec';
-import { rmpflow, urdf, xrdf } from '../src/robot/urdf';
+import { HOME, JOINTS, PAD, TOOL } from 'arm/robot/spec';
+import { rmpflow, urdf, xrdf } from 'arm/robot/urdf';
 
 /*
  * Writes the arm for Isaac Sim and cuMotion into sim/robot, from the spec the
