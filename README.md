@@ -5,7 +5,7 @@ The wire between the [Ki.CL](https://github.com/kenilam/Ki.CL) factory-arm hub a
 Three things live here:
 
 - `proto/`: the schema for the wire, `kicl/arm/v1/arm.proto`.
-- `client/`: the arm package (protocol, model, grid, controller, station, hub), built as a Module Federation remote named `arm`. It knows nothing about any page: a host hands the hub a `Floor`, plain data with the arms, belt lines, pallets, capacities and obstacles, and the hub builds itself from it. Ki.CL imports it as `arm/hub`, `arm/grid/hex` and so on, the way it imports Ki.CL-back's GraphQL client as `api`. What a page does with it, such as its preset floors, its editor's placement rules and how it draws the arm, stays in the page.
+- `client/`: the arm package (protocol, model, grid, controller, station, hub), built as a Module Federation remote named `arm`. It knows nothing about any page: a host hands the hub a `Floor`, plain data with the arms, belt lines, pallets, capacities and obstacles, and the hub builds itself from it. Ki.CL imports it as `arm/hub`, `arm/grid/hex` and so on, the way it imports Ki.CL-api's GraphQL client as `api`. What a page does with it, such as its preset floors, its editor's placement rules and how it draws the arm, stays in the page.
 - `server/`: the development server. It serves the built remote at `/arm/*` and runs the simulated controllers behind the wire at `/arm/link`.
 
 ```bash
@@ -30,7 +30,7 @@ One WebSocket carries every arm. Each frame is one protobuf message, no length p
 
 The hub plans in pad poses and case ids and sends whole plans. The arm turns them into joint motion on its own and reports back. So a slow link only delays when a plan starts, never how it runs. A `gate` in a plan holds the arm until the hub opens it, which is how the arm waits for a belt without knowing there is a belt.
 
-Why WebSocket and protobuf rather than gRPC or GraphQL: a browser cannot speak native gRPC and gRPC-Web has no bidirectional streaming, so gRPC would cost a proxy and give nothing back. GraphQL stays as the control plane in Ki.CL-back (which cell, tokens, saved floors) and never sits on the hot path. A telemetry frame is about 130 bytes in protobuf against roughly twice that in JSON.
+Why WebSocket and protobuf rather than gRPC or GraphQL: a browser cannot speak native gRPC and gRPC-Web has no bidirectional streaming, so gRPC would cost a proxy and give nothing back. GraphQL stays as the control plane in Ki.CL-api (which cell, tokens, saved floors) and never sits on the hot path. A telemetry frame is about 130 bytes in protobuf against roughly twice that in JSON.
 
 ## Consumers
 
@@ -115,7 +115,7 @@ Nothing here is public yet: the machine answers only to IAP and the bridge only 
 - **The machine is for Isaac sessions only.** It stops itself nightly and after 30 minutes with no hub on the bridge (10 with nobody switched over). Standing cost is the disk and NAT; the L4 bills by the hour it is actually used.
 - **A front door in this repo**, the dev server with a production mode on Cloud Run, scaled to zero: it serves the built remote at `/arm/*`, proxies `/arm/link` to the machine's internal address over Direct VPC egress, and offers `POST /arm/wake` (starts the machine through the Compute API with a service account allowed to start that one instance) and `GET /arm/status` (machine running, bridge answering).
 - **Waking.** When a visitor loads a simulation, the page asks for a wake; the button shows a spinner until the hub's dial of `/arm/link` gets its first telemetry, about two minutes from cold; then the robot icon appears and the visitor chooses to switch. The local workers run the whole time.
-- **Every public call is gated.** The browser holds no secret. Ki.CL's own server proxies `/arm` and mints a Google ID token per call, the way it already does for `/api`; the gateway runs `--no-allow-unauthenticated`. `/arm/wake` also needs the visitor's Turnstile-backed session token from Ki.CL-back, verified by signature, and a global rate limit on starts. The bridge checks a bearer on the WebSocket handshake that only the gateway holds. Isaac Sim's viewport is never exposed.
+- **Every public call is gated.** The browser holds no secret. Ki.CL's own server proxies `/arm` and mints a Google ID token per call, the way it already does for `/api`; the gateway runs `--no-allow-unauthenticated`. `/arm/wake` also needs the visitor's Turnstile-backed session token from Ki.CL-api, verified by signature, and a global rate limit on starts. The bridge checks a bearer on the WebSocket handshake that only the gateway holds. Isaac Sim's viewport is never exposed.
 - **One machine, many visitors.** The bridge namespaces arms per connection for the simulated controller; a single Isaac Sim world admits one visitor at a time.
 
 ## Plan

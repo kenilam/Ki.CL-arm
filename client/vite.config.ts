@@ -8,7 +8,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 /*
  * The arm's business logic as a Module Federation remote named `arm`, the
- * way Ki.CL-back serves its GraphQL client as `api`. No React in here and
+ * way Ki.CL-api serves its GraphQL client as `api`. No React in here and
  * nothing shared with the host: the hub and each controller run in workers,
  * and the page only talks to them through messages.
  *
